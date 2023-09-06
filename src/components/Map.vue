@@ -2,34 +2,47 @@
   <div class="map">
     <div class="row" v-for="row in map">
       <div class="col" v-for="col in row">
-        <img class="img" v-if="col === 0" :src="empty" />
-        <img class="img" v-else-if="col === 1" :src="wall" />
-        <img class="img" v-else-if="col === 2" :src="floor" />
+        <component :is="componentMap[col.name]" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import wall from '../assets/wall.png'
-import floor from '../assets/floor.png'
-import empty from '../assets/empty.png'
+import Empty from './Empty.vue'
+import Wall from './Wall.vue'
+import Floor from './Floor.vue'
+import { initMap } from '../game/map'
 
 // 0. 空白
 // 1. 墙
 // 2. 地板
-const map = [
+const rowMap = [
   [0, 0, 1, 1, 1, 1, 1, 0],
   [1, 1, 1, 2, 2, 2, 1, 0],
-  [1, 2, 2, 2, 2, 2, 1, 0]
+  [1, 2, 2, 2, 2, 2, 1, 0],
+  [1, 1, 1, 2, 2, 2, 1, 0],
+  [1, 2, 1, 1, 2, 2, 1, 0],
+  [1, 2, 1, 2, 2, 2, 1, 1],
+  [1, 2, 2, 2, 2, 2, 2, 1],
+  [1, 2, 2, 2, 2, 2, 2, 1],
+  [1, 1, 1, 1, 1, 1, 1, 1]
 ]
+
+const map = initMap(rowMap)
+
+const componentMap = {
+  Empty,
+  Wall,
+  Floor
+}
 </script>
 
 <style scoped>
 .row {
   display: flex;
 }
-.col .img {
+.map-img {
   display: block;
 }
 </style>
