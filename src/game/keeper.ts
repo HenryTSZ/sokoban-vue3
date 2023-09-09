@@ -1,3 +1,5 @@
+import { getMap } from './map'
+
 export class Keeper {
   x: number
   y: number
@@ -7,6 +9,10 @@ export class Keeper {
   }
 
   moveLeft() {
+    if (getMap().map[this.y][this.x - 1].name === 'Wall') {
+      return
+    }
+
     this.x--
   }
 }

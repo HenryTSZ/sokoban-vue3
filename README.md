@@ -8,144 +8,175 @@
 
 ## [添加玩家](https://github.com/HenryTSZ/sokoban-vue3/tree/8b487da65560ececa311a5b7be7c3400e99608cf)
 
-## 玩家移动位置
+## [玩家移动位置](https://github.com/HenryTSZ/sokoban-vue3/tree/9acd676ee8399f2f41e666363a4ddf273c1930c4)
 
-### 设计玩家数据结构
+## 碰撞检测
 
-由于玩家是绝对定位，通过 `top` 和 `left` 属性来设置位置，故应该有 `x` 和 `y` 两个属性来表示位置，具体取值与 `rowMap` 相关。
+当玩家移动的下一个位置是墙的时候，玩家就不能再移动了。
 
-比如 `{ x: 0, y: 0 }` 表示玩家在第一行第一列的位置，对应的 `top` 和 `left` 属性应该为 `0`，`{ x: 1, y: 1 }` 表示玩家在第二行第二列的位置，对应的 `top` 和 `left` 属性应该为 `32px`(图片大小为 `32px`)。
+所以我们在 `moveLeft` 中需要检测玩家是否碰到墙。
 
-### 使用 TDD 来测试玩家位置
+检测的方法是：玩家的 `x` 和 `y` 在地图的二维数组中的位置是否是墙。
 
-先创建一个 `src/game/tests/keeper.spec.ts` 文件
+现在 `x` 和 `y` 我们在 `keeper.ts` 中能拿到，但地图的二维数组还拿不到。
 
-```typescript
-import { describe, expect, it } from 'vitest'
+我们只是在 `map.ts` 中将传入的二维数组处理了一下，并没有保存，所以我们需要在 `map.ts` 中保存。
 
-describe('Keeper', () => {
-  it('should move to left', () => {
-    // 初始化玩家位置
-    // 向左移动
-    // 测试玩家位置是否正确
-  })
+### 保存地图
+
+我们可以在 `initMap` 中保存地图的二维数组，然后暴漏出一个 `getMap` 方法来拿到地图。
+
+```ts
+export class Empty {
+  public name = 'Empty'
+}
+
+export class Wall {
+  public name = 'Wall'
+}
+
+export class Floor {
+  public name = 'Floor'
+}
+
+export type Element = Empty | Wall | Floor
+
+let _rowMap: number[][]
+let _map: Element[][]
+
+export const initMap = (rowMap: number[][]) => {
+  _rowMap = rowMap
+  const map = []
+  for (let i = 0; i < rowMap.length; i++) {
+    const row = []
+    for (let j = 0; j < rowMap[i].length; j++) {
+      switch (rowMap[i][j]) {
+        case 0:
+          row.push(new Empty())
+          break
+        case 1:
+          row.push(new Wall())
+          break
+        case 2:
+          row.push(new Floor())
+          break
+      }
+    }
+    map.push(row)
+  }
+  _map = map
+  return map
+}
+
+export const getMap = () => ({ map: _map, rowMap: _rowMap })
+```
+
+### 检测玩家是否碰到墙
+
+然后我们在 `moveLeft` 中判断一下下一个位置是否是墙：
+
+```ts
+moveLeft() {
+  if (getMap().map[this.y][this.x - 1].name === 'Wall') {
+    return
+  }
+
+  this.x--
+}
+```
+
+### 添加单测
+
+启动测试后发现报错了：
+
+![](public/013.png)
+
+这是因为我们没有初始化地图。
+
+所以我们需要修改一下这个单侧：
+
+```ts
+it('should move to left when next is not wall', () => {
+  // 初始化地图
+  initMap([
+    [1, 1, 1, 1],
+    [1, 2, 2, 1],
+    [1, 2, 2, 1],
+    [1, 1, 1, 1]
+  ])
+  // 初始化玩家位置
+  const keeper = new Keeper(2, 1)
+  // 向左移动
+  keeper.moveLeft()
+  // 测试玩家位置是否正确
+  expect(keeper.x).toBe(1)
 })
 ```
 
-#### 初始化玩家位置
+这样就测试通过了。
 
-先创建一个 `src/game/keeper.ts` 文件，使用 `Class` 来定义玩家类。
+再加一个遇墙的单测:
 
-```typescript
-export class Keeper {
-  x: number
-  y: number
-  constructor(x: number, y: number) {
-    this.x = x
-    this.y = y
-  }
-}
+```ts
+it('should not move to left when next is wall', () => {
+  // 初始化地图
+  initMap([
+    [1, 1, 1, 1],
+    [1, 2, 2, 1],
+    [1, 2, 2, 1],
+    [1, 1, 1, 1]
+  ])
+  // 初始化玩家位置
+  const keeper = new Keeper(1, 1)
+  // 向左移动
+  keeper.moveLeft()
+  // 测试玩家位置是否正确
+  expect(keeper.x).toBe(1)
+})
 ```
 
-这样使用 `const keeper = new Keeper(0, 0)` 即可初始化玩家位置。
+测试通过
 
-#### 向左移动
+由于每次都需要初始化地图，而且都一致，所以我们可以把这部分逻辑提取出来：
 
-我们还需要添加一个 `moveLeft` 方法：
-
-```typescript
-export class Keeper {
-  x: number
-  y: number
-  constructor(x: number, y: number) {
-    this.x = x
-    this.y = y
-  }
-
-  moveLeft() {
-    this.x--
-  }
-}
-```
-
-### 测试玩家位置是否正确
-
-```typescript
-import { describe, expect, it } from 'vitest'
-import { Keeper } from '../keeper'
-
+```ts
 describe('Keeper', () => {
-  it('should move to left', () => {
+  beforeEach(() => {
+    // 初始化地图
+    initMap([
+      [1, 1, 1, 1],
+      [1, 2, 2, 1],
+      [1, 2, 2, 1],
+      [1, 1, 1, 1]
+    ])
+  })
+  it('should move to left when next is not wall', () => {
     // 初始化玩家位置
-    const keeper = new Keeper(1, 0)
+    const keeper = new Keeper(2, 1)
     // 向左移动
     keeper.moveLeft()
     // 测试玩家位置是否正确
-    expect(keeper.x).toBe(0)
+    expect(keeper.x).toBe(1)
+  })
+  it('should not move to left when next is wall', () => {
+    // 初始化玩家位置
+    const keeper = new Keeper(1, 1)
+    // 向左移动
+    keeper.moveLeft()
+    // 测试玩家位置是否正确
+    expect(keeper.x).toBe(1)
   })
 })
 ```
 
-![](public/011.png)
+测试也没有问题
 
-可以看到测试通过了。
-
-### 添加到页面中
-
-由于控制玩家移动需要使用键盘事件，所以需要在 `src/components/Keeper.vue` 中添加键盘事件监听。
-
-```vue
-<template>
-  <img
-    class="map-img keeper"
-    :src="keeperSrc"
-    :style="{ top: `${keeper.y * 32}px`, left: `${keeper.x * 32}px` }" />
-</template>
-
-<script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
-import keeperSrc from '../assets/keeper.png'
-import { Keeper } from '../game/keeper'
-
-const keeper = new Keeper(1, 1)
-
-function handleKeyup(e: KeyboardEvent) {
-  switch (e.code) {
-    case 'ArrowLeft':
-    case 'KeyH':
-      keeper.moveLeft()
-      console.log(keeper)
-      break
-    default:
-      break
-  }
-}
-onMounted(() => {
-  window.addEventListener('keyup', handleKeyup)
-})
-onUnmounted(() => {
-  window.removeEventListener('keyup', handleKeyup)
-})
-</script>
-
-<style scoped>
-.keeper {
-  position: absolute;
-}
-</style>
-```
-
-测试发现 `keeper` 的 `x` 和 `y` 属性都是正确的，但玩家位置不是正确的，这是由于响应丢失的原因。
-
-那我们只需要使用 `reactive` 来修复这个问题。
+### 在页面测试一下
 
 ```ts
-let keeper = new Keeper(1, 1)
-keeper = reactive(keeper)
+let keeper = new Keeper(5, 1)
 ```
 
-可以看到玩家的位置已经修复。
+也没有问题：
 
-![](public/012.png)
-
-但由于没有做碰撞检测，玩家会一直移动，即使碰到墙。
+![](public/014.png)

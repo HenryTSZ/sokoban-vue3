@@ -10,7 +10,7 @@ import { onMounted, onUnmounted, reactive } from 'vue'
 import keeperSrc from '../assets/keeper.png'
 import { Keeper } from '../game/keeper'
 
-let keeper = new Keeper(1, 1)
+let keeper = new Keeper(5, 1)
 keeper = reactive(keeper)
 
 function handleKeyup(e: KeyboardEvent) {

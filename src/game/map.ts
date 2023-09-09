@@ -10,7 +10,13 @@ export class Floor {
   public name = 'Floor'
 }
 
+export type Element = Empty | Wall | Floor
+
+let _rowMap: number[][]
+let _map: Element[][]
+
 export const initMap = (rowMap: number[][]) => {
+  _rowMap = rowMap
   const map = []
   for (let i = 0; i < rowMap.length; i++) {
     const row = []
@@ -29,5 +35,8 @@ export const initMap = (rowMap: number[][]) => {
     }
     map.push(row)
   }
+  _map = map
   return map
 }
+
+export const getMap = () => ({ map: _map, rowMap: _rowMap })
