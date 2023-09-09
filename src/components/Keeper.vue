@@ -1,15 +1,39 @@
 <template>
-  <img class="map-img keeper" :src="keeper" />
+  <img
+    class="map-img keeper"
+    :src="keeperSrc"
+    :style="{ top: `${keeper.y * 32}px`, left: `${keeper.x * 32}px` }" />
 </template>
 
 <script setup lang="ts">
-import keeper from '../assets/keeper.png'
+import { onMounted, onUnmounted, reactive } from 'vue'
+import keeperSrc from '../assets/keeper.png'
+import { Keeper } from '../game/keeper'
+
+let keeper = new Keeper(1, 1)
+keeper = reactive(keeper)
+
+function handleKeyup(e: KeyboardEvent) {
+  switch (e.code) {
+    case 'ArrowLeft':
+    case 'KeyH':
+      keeper.moveLeft()
+      console.log(keeper)
+      break
+    default:
+      break
+  }
+}
+onMounted(() => {
+  window.addEventListener('keyup', handleKeyup)
+})
+onUnmounted(() => {
+  window.removeEventListener('keyup', handleKeyup)
+})
 </script>
 
 <style scoped>
 .keeper {
   position: absolute;
-  top: 0;
-  left: 0;
 }
 </style>
