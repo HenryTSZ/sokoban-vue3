@@ -40,3 +40,7 @@ export const initMap = (rowMap: number[][]) => {
 }
 
 export const getMap = () => ({ map: _map, rowMap: _rowMap })
+
+export const getElementByPosition = (x: number, y: number) => {
+  return _map[y][x]
+}

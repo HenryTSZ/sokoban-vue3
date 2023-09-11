@@ -1,10 +1,18 @@
 import { Keeper } from './keeper'
-import { Element } from './map'
+import { getElementByPosition } from './map'
 
-export const wallCollisionLeft = (keeper: Keeper, map: Element[][]) => {
-  const nextLeftPosition = keeper.x - 1
+export const wallCollisionLeft = (keeper: Keeper) => {
+  return getElementByPosition(keeper.x - 1, keeper.y).name === 'Wall'
+}
 
-  const element = map[keeper.y][nextLeftPosition]
+export const wallCollisionRight = (keeper: Keeper) => {
+  return getElementByPosition(keeper.x + 1, keeper.y).name === 'Wall'
+}
 
-  return element.name === 'Wall'
+export const wallCollisionUp = (keeper: Keeper) => {
+  return getElementByPosition(keeper.x, keeper.y - 1).name === 'Wall'
+}
+
+export const wallCollisionDown = (keeper: Keeper) => {
+  return getElementByPosition(keeper.x, keeper.y + 1).name === 'Wall'
 }

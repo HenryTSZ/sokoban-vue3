@@ -12,63 +12,161 @@
 
 ## [碰撞检测](https://github.com/HenryTSZ/sokoban-vue3/tree/76f2289456bfde01ede6f4b0948f8a3a5f78b5a6)
 
-## 重构玩家数据结构
+## [重构玩家数据结构](https://github.com/HenryTSZ/sokoban-vue3/tree/63fb1f9bd9915a4450b0b6c89deee6e11be7dd06)
 
-目前玩家向左移动及碰撞检测都做完了，我们只需要按现有逻辑把其他三个方向的功能添加进来即可。
+## 完成玩家移动位置
 
-但我们先来重构一下代码吧。
+现在我们只完成了玩家向左移动的功能，现在我们来添加玩家向右/上/下移动的功能。
 
-目前碰撞检测的逻辑是写在 `keeper.ts` 中，我们需要把它抽离出来，抽离后需要两个数据：`keeper` 和 `map`
+注：添加功能的时候最好使用小步走的方式，加一个功能就使用单测测试一下
 
-`map` 我们可以通过 `getMap` 方法获取，但 `keeper` 目前无法获取到，因为它的实例对象在 `Keeper.vue` 中
+### 补全其余三个方向的移动逻辑
 
-所有我们需要修改一下 `keeper` 的数据结构，不使用类了，和 `map` 的数据结构一样
-
-注：因为玩家只有一个，所以我们其实不需要使用类去定义，而和 `map` 一样的方式这个思路就很妙，调用 `init` 方法后就把传入的数据保存到内部，外界是无法访问的，但我可以给你提供一个 `get` 方法，让外界可以访问。这样就起到保护数据的作用，并且还可以和外界进行交互
-
-### 玩家数据结构
+`keeperCollisionDetector.ts`:
 
 ```ts
-import { getMap } from './map'
+export const wallCollisionRight = (keeper: Keeper, map: Element[][]) => {
+  const nextRightPosition = keeper.x + 1
 
-export interface Keeper {
-  x: number
-  y: number
+  const element = map[keeper.y][nextRightPosition]
+
+  return element.name === 'Wall'
 }
 
-let _keeper: Keeper
+export const wallCollisionUp = (keeper: Keeper, map: Element[][]) => {
+  const nextTopPosition = keeper.y - 1
 
-export const getKeeper = () => _keeper
+  const element = map[nextTopPosition][keeper.x]
 
-export const initKeeper = (keeper: Keeper) => {
-  _keeper = keeper
+  return element.name === 'Wall'
 }
 
-export const moveLeft = () => {
-  if (getMap().map[_keeper.y][_keeper.x - 1].name === 'Wall') {
-    return
-  }
-  _keeper.x--
+export const wallCollisionDown = (keeper: Keeper, map: Element[][]) => {
+  const nextBottomPosition = keeper.y + 1
+
+  const element = map[nextBottomPosition][keeper.x]
+
+  return element.name === 'Wall'
 }
 ```
 
-修改以后单测就报错了，需要解决一下
+`keeper.ts`:
 
 ```ts
-import { beforeEach, describe, expect, it } from 'vitest'
-import { initKeeper, moveLeft, getKeeper } from '../keeper'
-import { initMap } from '../map'
+export const moveRight = () => {
+  if (wallCollisionRight(_keeper, getMap().map)) {
+    return
+  }
+  _keeper.x++
+}
 
-describe('Keeper', () => {
-  beforeEach(() => {
-    // 初始化地图
-    initMap([
-      [1, 1, 1, 1],
-      [1, 2, 2, 1],
-      [1, 2, 2, 1],
-      [1, 1, 1, 1]
-    ])
-  })
+export const moveUp = () => {
+  if (wallCollisionUp(_keeper, getMap().map)) {
+    return
+  }
+  _keeper.y--
+}
+
+export const moveDown = () => {
+  if (wallCollisionDown(_keeper, getMap().map)) {
+    return
+  }
+  _keeper.y++
+}
+```
+
+`keeper.spec.ts`:
+
+```ts
+it('should move to right when next is not wall', () => {
+  // 初始化玩家位置
+  initKeeper({ x: 1, y: 1 })
+  // 向右移动
+  moveRight()
+  // 测试玩家位置是否正确
+  expect(getKeeper().x).toBe(2)
+})
+it('should not move to right when next is wall', () => {
+  // 初始化玩家位置
+  initKeeper({ x: 2, y: 1 })
+  // 向右移动
+  moveRight()
+  // 测试玩家位置是否正确
+  expect(getKeeper().x).toBe(2)
+})
+
+it('should move up when next is not wall', () => {
+  // 初始化玩家位置
+  initKeeper({ x: 1, y: 2 })
+  // 向上移动
+  moveUp()
+  // 测试玩家位置是否正确
+  expect(getKeeper().y).toBe(1)
+})
+it('should not move up when next is wall', () => {
+  // 初始化玩家位置
+  initKeeper({ x: 1, y: 1 })
+  // 向上移动
+  moveUp()
+  // 测试玩家位置是否正确
+  expect(getKeeper().y).toBe(1)
+})
+
+it('should move down when next is not wall', () => {
+  // 初始化玩家位置
+  initKeeper({ x: 1, y: 1 })
+  // 向下移动
+  moveDown()
+  // 测试玩家位置是否正确
+  expect(getKeeper().y).toBe(2)
+})
+it('should not move down when next is wall', () => {
+  // 初始化玩家位置
+  initKeeper({ x: 1, y: 2 })
+  // 向下移动
+  moveDown()
+  // 测试玩家位置是否正确
+  expect(getKeeper().y).toBe(2)
+})
+```
+
+测试通过
+
+`Keeper.vue`:
+
+```ts
+switch (e.code) {
+  case 'ArrowLeft':
+  case 'KeyH':
+    moveLeft()
+    break
+  case 'ArrowRight':
+  case 'KeyL':
+    moveRight()
+    break
+  case 'ArrowUp':
+  case 'KeyK':
+    moveUp()
+    break
+  case 'ArrowDown':
+  case 'KeyJ':
+    moveDown()
+    break
+  default:
+    break
+}
+```
+
+页面也没问题
+
+### 重构
+
+测试用例重构：
+
+目前所有的测试用例都是写在一起的，我们可以按移动方向分一下组：
+
+```ts
+describe('move left', () => {
   it('should move to left when next is not wall', () => {
     // 初始化玩家位置
     initKeeper({ x: 2, y: 1 })
@@ -88,148 +186,36 @@ describe('Keeper', () => {
 })
 ```
 
-测试通过
+碰撞检测重构:
 
-同理，再解决一下页面报错：
+首先 `nextLeftPosition` 这个其实我们不需要区分方向的，可以直接改成 `nextPosition`
 
-```vue
-<template>
-  <img
-    class="map-img keeper"
-    :src="keeperSrc"
-    :style="{ top: `${keeper.y * 32}px`, left: `${keeper.x * 32}px` }" />
-</template>
+其次，`const element = map[keeper.y][nextPosition]` 这是一个低层次的代码，根本就不知道代表的是什么，我们在写代码的时候，最好能让代码自己表达出自己的意思
 
-<script setup lang="ts">
-import { onMounted, onUnmounted, reactive } from 'vue'
-import keeperSrc from '../assets/keeper.png'
-import { type Keeper, initKeeper, moveLeft } from '../game/keeper'
+那如何让代码自己表达出自己的意思呢？我们可以将其封装为一个行为，也就是一个函数
 
-const keeper: Keeper = reactive({
-  x: 5,
-  y: 1
-})
-initKeeper(keeper)
+根据 `OOP` 的思想，这个行为是属于 `map` 的
 
-function handleKeyup(e: KeyboardEvent) {
-  switch (e.code) {
-    case 'ArrowLeft':
-    case 'KeyH':
-      moveLeft()
-      console.log(keeper)
-      break
-    default:
-      break
-  }
-}
-onMounted(() => {
-  window.addEventListener('keyup', handleKeyup)
-})
-onUnmounted(() => {
-  window.removeEventListener('keyup', handleKeyup)
-})
-</script>
-
-<style scoped>
-.keeper {
-  position: absolute;
-}
-</style>
-```
-
-测试通过
-
-### 抽离位置
-
-但我们 `style` 也需要重构一下，提取一个 `usePosition` 方法，统一处理位置
-
-新建一个 `src/composables/position.ts` 文件:
+`map.ts`:
 
 ```ts
-const STEP = 32
-
-export interface Position {
-  x: number
-  y: number
-}
-
-export const usePosition = (position: Position) => {
-  const top = position.y * STEP
-  const left = position.x * STEP
-  return `top: ${top}px; left: ${left}px;`
+export const getElementByPosition = (x: number, y: number) => {
+  return _map[y][x]
 }
 ```
 
-在 `Keeper.vue` 中验证一下:
-
-```vue
-<img class="map-img keeper" :src="keeperSrc" :style="positionStyle" />
-```
+那碰撞检测代码就变成这样了：
 
 ```ts
-import { usePosition } from '../composables/position'
-
-const keeper: Keeper = reactive({
-  x: 5,
-  y: 1
-})
-initKeeper(keeper)
-
-const positionStyle = usePosition(keeper)
-```
-
-发现初始化位置是正确的，但无法移动了。
-
-排查发现我们只在初始化的时候计算了一下玩家的位置，但在移动时并没有重新计算位置。
-
-所以我们在 `usePosition` 方法中需要使用计算属性
-
-```ts
-export const usePosition = (position: Position) => {
-  const top = computed(() => position.y * STEP)
-  const left = computed(() => position.x * STEP)
-  return computed(() => `top: ${top.value}px; left: ${left.value}px;`)
+export const wallCollisionLeft = (keeper: Keeper) => {
+  return getElementByPosition(keeper.x - 1, keeper.y).name === 'Wall'
 }
 ```
 
-测试通过
+比以前清晰了好多
 
-### 修改 Keeper 类型
+由于这里不再需要 `map` 这个数据了，所以调用的地方也可以去掉这个参数了
 
-这里我们发现 `Keeper` 的类型和 `Position` 类型不一致，所以我们可以让 `Keeper` 类型继承 `Position` 类型。
+我们通过函数名知道了是什么行为，这样就能让代码自己表达出自己的意思，而具体的行为是在函数内部实现的，就不用暴露低层次的代码了，这样就更加清晰了
 
-```ts
-export interface Keeper extends Position {}
-```
-
-### 抽离碰撞检测
-
-所有数据都有了，我们可以抽离碰撞检测的逻辑。
-
-创建一个 `src/game/keeperCollisionDetection.ts` 文件:
-
-```ts
-import { Keeper } from './keeper'
-import { Element } from './map'
-
-export const wallCollisionLeft = (keeper: Keeper, map: Element[][]) => {
-  const nextLeftPosition = keeper.x - 1
-
-  const element = map[keeper.y][nextLeftPosition]
-
-  return element.name === 'Wall'
-}
-```
-
-替换到 `keeper.ts` 中:
-
-```ts
-export const moveLeft = () => {
-  if (wallCollisionLeft(_keeper, getMap().map)) {
-    return
-  }
-  _keeper.x--
-}
-```
-
-单测也通过了，页面也没问题
+同时，修改完成后，一定要看一下测试用例是否能通过

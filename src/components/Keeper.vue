@@ -5,7 +5,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, reactive } from 'vue'
 import keeperSrc from '../assets/keeper.png'
-import { type Keeper, initKeeper, moveLeft } from '../game/keeper'
+import { type Keeper, initKeeper, moveLeft, moveRight, moveUp, moveDown } from '../game/keeper'
 import { usePosition } from '../composables/position'
 
 const keeper: Keeper = reactive({
@@ -22,7 +22,18 @@ function handleKeyup(e: KeyboardEvent) {
     case 'ArrowLeft':
     case 'KeyH':
       moveLeft()
-      console.log(keeper)
+      break
+    case 'ArrowRight':
+    case 'KeyL':
+      moveRight()
+      break
+    case 'ArrowUp':
+    case 'KeyK':
+      moveUp()
+      break
+    case 'ArrowDown':
+    case 'KeyJ':
+      moveDown()
       break
     default:
       break

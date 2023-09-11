@@ -1,6 +1,10 @@
 import { Position } from '../composables/position'
-import { wallCollisionLeft } from './keeperCollisionDetection'
-import { getMap } from './map'
+import {
+  wallCollisionDown,
+  wallCollisionLeft,
+  wallCollisionRight,
+  wallCollisionUp
+} from './keeperCollisionDetection'
 
 export interface Keeper extends Position {}
 
@@ -13,8 +17,29 @@ export const initKeeper = (keeper: Keeper) => {
 }
 
 export const moveLeft = () => {
-  if (wallCollisionLeft(_keeper, getMap().map)) {
+  if (wallCollisionLeft(_keeper)) {
     return
   }
   _keeper.x--
+}
+
+export const moveRight = () => {
+  if (wallCollisionRight(_keeper)) {
+    return
+  }
+  _keeper.x++
+}
+
+export const moveUp = () => {
+  if (wallCollisionUp(_keeper)) {
+    return
+  }
+  _keeper.y--
+}
+
+export const moveDown = () => {
+  if (wallCollisionDown(_keeper)) {
+    return
+  }
+  _keeper.y++
 }
