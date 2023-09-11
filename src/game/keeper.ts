@@ -1,18 +1,20 @@
+import { Position } from '../composables/position'
+import { wallCollisionLeft } from './keeperCollisionDetection'
 import { getMap } from './map'
 
-export class Keeper {
-  x: number
-  y: number
-  constructor(x: number, y: number) {
-    this.x = x
-    this.y = y
-  }
+export interface Keeper extends Position {}
 
-  moveLeft() {
-    if (getMap().map[this.y][this.x - 1].name === 'Wall') {
-      return
-    }
+let _keeper: Keeper
 
-    this.x--
+export const getKeeper = () => _keeper
+
+export const initKeeper = (keeper: Keeper) => {
+  _keeper = keeper
+}
+
+export const moveLeft = () => {
+  if (wallCollisionLeft(_keeper, getMap().map)) {
+    return
   }
+  _keeper.x--
 }
