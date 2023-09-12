@@ -14,208 +14,111 @@
 
 ## [重构玩家数据结构](https://github.com/HenryTSZ/sokoban-vue3/tree/63fb1f9bd9915a4450b0b6c89deee6e11be7dd06)
 
-## 完成玩家移动位置
+## [完成玩家移动位置](https://github.com/HenryTSZ/sokoban-vue3/tree/3510c6b4f6509e21b5a36742b1527f74f1be9be9)
 
-现在我们只完成了玩家向左移动的功能，现在我们来添加玩家向右/上/下移动的功能。
+## 添加箱子
 
-注：添加功能的时候最好使用小步走的方式，加一个功能就使用单测测试一下
+我们可以参考 `keeper` 的设计方案来设计箱子
 
-### 补全其余三个方向的移动逻辑
+初始化应该有多个箱子：`[{ x, y }, { x, y }, ...]`，和 `Keeper` 一样，渲染到页面上
 
-`keeperCollisionDetector.ts`:
+然后就是箱子和玩家之间的碰撞检测了，当用户下一个位置是箱子的时候，要判断箱子是否可以向用户移动方向移动
+
+最后，箱子是有两种状态的：普通状态和在放置点的状态
+
+### 渲染箱子到页面
+
+那我们先将箱子渲染到页面
+
+先创建一个箱子的组件：`src/components/Cargo.vue`，与 `Empty.vue` 一样
+
+```vue
+<template>
+  <img class="map-img" :src="cargo" />
+</template>
+
+<script setup lang="ts">
+import cargo from '../assets/cargo.png'
+</script>
+
+<style scoped></style>
+```
+
+再将其添加到 `Game.vue` 中：
+
+```vue
+<template>
+  <div class="container">
+    <Map />
+    <Keeper />
+    <Cargo />
+  </div>
+</template>
+
+<script setup lang="ts">
+import Map from './Map.vue'
+import Keeper from './Keeper.vue'
+import Cargo from './Cargo.vue'
+</script>
+```
+
+这样就可以在页面显示了
+
+![](public/015.png)
+
+然后我们去处理数据
+
+### 处理箱子数据
+
+创建一个 `src/game/cargo.ts` 文件，逻辑与 `keeper.ts` 一样
 
 ```ts
-export const wallCollisionRight = (keeper: Keeper, map: Element[][]) => {
-  const nextRightPosition = keeper.x + 1
+import { Position } from '../composables/position'
 
-  const element = map[keeper.y][nextRightPosition]
+export interface Cargo extends Position {}
 
-  return element.name === 'Wall'
-}
+let _cargos: Cargo[] = []
 
-export const wallCollisionUp = (keeper: Keeper, map: Element[][]) => {
-  const nextTopPosition = keeper.y - 1
+export const getCargos = (): Cargo[] => _cargos
 
-  const element = map[nextTopPosition][keeper.x]
-
-  return element.name === 'Wall'
-}
-
-export const wallCollisionDown = (keeper: Keeper, map: Element[][]) => {
-  const nextBottomPosition = keeper.y + 1
-
-  const element = map[nextBottomPosition][keeper.x]
-
-  return element.name === 'Wall'
+export const initCargos = (cargos: Cargo[]): void => {
+  _cargos = cargos
 }
 ```
 
-`keeper.ts`:
+再在 `Cargo.vue` 中引入
 
-```ts
-export const moveRight = () => {
-  if (wallCollisionRight(_keeper, getMap().map)) {
-    return
-  }
-  _keeper.x++
-}
+```vue
+<template>
+  <img class="map-img cargo" :src="cargo" v-for="style in positionStyles" :style="style.value" />
+</template>
 
-export const moveUp = () => {
-  if (wallCollisionUp(_keeper, getMap().map)) {
-    return
-  }
-  _keeper.y--
-}
+<script setup lang="ts">
+import { reactive } from 'vue'
+import cargo from '../assets/cargo.png'
+import { Cargo, initCargos } from '../game/cargo'
+import { usePosition } from '../composables/position'
 
-export const moveDown = () => {
-  if (wallCollisionDown(_keeper, getMap().map)) {
-    return
-  }
-  _keeper.y++
+const cargos: Cargo[] = reactive([
+  { x: 4, y: 2 },
+  { x: 3, y: 6 }
+])
+initCargos(cargos)
+
+const positionStyles = cargos.map(cargo => usePosition(cargo))
+</script>
+
+<style scoped>
+.cargo {
+  position: absolute;
 }
+</style>
 ```
 
-`keeper.spec.ts`:
+处理箱子的位置正好可以复用当初 `keeper` 封装的 `usePosition` 方法，不过这里是多个位置
 
-```ts
-it('should move to right when next is not wall', () => {
-  // 初始化玩家位置
-  initKeeper({ x: 1, y: 1 })
-  // 向右移动
-  moveRight()
-  // 测试玩家位置是否正确
-  expect(getKeeper().x).toBe(2)
-})
-it('should not move to right when next is wall', () => {
-  // 初始化玩家位置
-  initKeeper({ x: 2, y: 1 })
-  // 向右移动
-  moveRight()
-  // 测试玩家位置是否正确
-  expect(getKeeper().x).toBe(2)
-})
+这样就可以在页面显示了
 
-it('should move up when next is not wall', () => {
-  // 初始化玩家位置
-  initKeeper({ x: 1, y: 2 })
-  // 向上移动
-  moveUp()
-  // 测试玩家位置是否正确
-  expect(getKeeper().y).toBe(1)
-})
-it('should not move up when next is wall', () => {
-  // 初始化玩家位置
-  initKeeper({ x: 1, y: 1 })
-  // 向上移动
-  moveUp()
-  // 测试玩家位置是否正确
-  expect(getKeeper().y).toBe(1)
-})
+![](public/016.png)
 
-it('should move down when next is not wall', () => {
-  // 初始化玩家位置
-  initKeeper({ x: 1, y: 1 })
-  // 向下移动
-  moveDown()
-  // 测试玩家位置是否正确
-  expect(getKeeper().y).toBe(2)
-})
-it('should not move down when next is wall', () => {
-  // 初始化玩家位置
-  initKeeper({ x: 1, y: 2 })
-  // 向下移动
-  moveDown()
-  // 测试玩家位置是否正确
-  expect(getKeeper().y).toBe(2)
-})
-```
-
-测试通过
-
-`Keeper.vue`:
-
-```ts
-switch (e.code) {
-  case 'ArrowLeft':
-  case 'KeyH':
-    moveLeft()
-    break
-  case 'ArrowRight':
-  case 'KeyL':
-    moveRight()
-    break
-  case 'ArrowUp':
-  case 'KeyK':
-    moveUp()
-    break
-  case 'ArrowDown':
-  case 'KeyJ':
-    moveDown()
-    break
-  default:
-    break
-}
-```
-
-页面也没问题
-
-### 重构
-
-测试用例重构：
-
-目前所有的测试用例都是写在一起的，我们可以按移动方向分一下组：
-
-```ts
-describe('move left', () => {
-  it('should move to left when next is not wall', () => {
-    // 初始化玩家位置
-    initKeeper({ x: 2, y: 1 })
-    // 向左移动
-    moveLeft()
-    // 测试玩家位置是否正确
-    expect(getKeeper().x).toBe(1)
-  })
-  it('should not move to left when next is wall', () => {
-    // 初始化玩家位置
-    initKeeper({ x: 1, y: 1 })
-    // 向左移动
-    moveLeft()
-    // 测试玩家位置是否正确
-    expect(getKeeper().x).toBe(1)
-  })
-})
-```
-
-碰撞检测重构:
-
-首先 `nextLeftPosition` 这个其实我们不需要区分方向的，可以直接改成 `nextPosition`
-
-其次，`const element = map[keeper.y][nextPosition]` 这是一个低层次的代码，根本就不知道代表的是什么，我们在写代码的时候，最好能让代码自己表达出自己的意思
-
-那如何让代码自己表达出自己的意思呢？我们可以将其封装为一个行为，也就是一个函数
-
-根据 `OOP` 的思想，这个行为是属于 `map` 的
-
-`map.ts`:
-
-```ts
-export const getElementByPosition = (x: number, y: number) => {
-  return _map[y][x]
-}
-```
-
-那碰撞检测代码就变成这样了：
-
-```ts
-export const wallCollisionLeft = (keeper: Keeper) => {
-  return getElementByPosition(keeper.x - 1, keeper.y).name === 'Wall'
-}
-```
-
-比以前清晰了好多
-
-由于这里不再需要 `map` 这个数据了，所以调用的地方也可以去掉这个参数了
-
-我们通过函数名知道了是什么行为，这样就能让代码自己表达出自己的意思，而具体的行为是在函数内部实现的，就不用暴露低层次的代码了，这样就更加清晰了
-
-同时，修改完成后，一定要看一下测试用例是否能通过
+目前我们都是调整 UI 显示，故不需要写单测
