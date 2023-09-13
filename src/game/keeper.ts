@@ -1,4 +1,5 @@
 import { Position } from '../composables/position'
+import { getCargoByPosition, getCargos } from './cargo'
 import {
   wallCollisionDown,
   wallCollisionLeft,
@@ -17,8 +18,15 @@ export const initKeeper = (keeper: Keeper) => {
 }
 
 export const moveLeft = () => {
-  if (wallCollisionLeft(_keeper)) {
+  const position = { x: _keeper.x - 1, y: _keeper.y }
+  if (wallCollisionLeft(position)) {
     return
+  }
+  // 1. 需要获取到 next left position 上的 cargo
+  const cargo = getCargoByPosition(position)
+  // 2. 改变这个 cargo 的位置
+  if (cargo) {
+    cargo.x--
   }
   _keeper.x--
 }
