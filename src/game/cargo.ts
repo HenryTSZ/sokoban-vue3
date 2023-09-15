@@ -1,4 +1,4 @@
-import { Position } from '../composables/position'
+import { Position } from './position'
 
 export interface Cargo extends Position {}
 

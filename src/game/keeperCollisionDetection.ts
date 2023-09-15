@@ -1,6 +1,10 @@
-import { Position } from '../composables/position'
+import { Position } from './position'
 import { Keeper } from './keeper'
 import { getElementByPosition } from './map'
+
+export const wallCollision = (position: Position) => {
+  return getElementByPosition(position.x, position.y).name === 'Wall'
+}
 
 export const wallCollisionLeft = (position: Position) => {
   return getElementByPosition(position.x, position.y).name === 'Wall'

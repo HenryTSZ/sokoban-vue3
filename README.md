@@ -18,195 +18,35 @@
 
 ## [添加箱子](https://github.com/HenryTSZ/sokoban-vue3/tree/5275e5a04d37221b8e324e74aed5f539735c0f4b)
 
-## 玩家推着箱子移动
+## [玩家推着箱子移动](https://github.com/HenryTSZ/sokoban-vue3/tree/0d342cc8055e080d1380ca282a8974c3b8157b2a)
 
-当玩家移动时，需要查找所有的箱子，如果玩家的下一个位置是箱子，就将该箱子和玩家一起向玩家移动的方向移动(暂时不考虑墙)
+## 箱子的碰撞检测
 
-我们先写单测
+当箱子移动的下一个位置是墙的时候，玩家和箱子就不能移动了
 
-### 整理以前的单测
+### TDD 箱子的碰撞检测
 
-目前我们把 `keeper` 的移动和与墙的碰撞检测的单测都写好了，我们把这些单测合并在一起
+先写单测：
 
 ```ts
-describe('Keeper', () => {
-  describe('move and wall collision', () => {
-    beforeEach(() => {
-      // 初始化地图
-      initMap([
-        [1, 1, 1, 1],
-        [1, 2, 2, 1],
-        [1, 2, 2, 1],
-        [1, 1, 1, 1]
-      ])
-    })
-
-    describe('move left', () => {
-      it('should move to left when next is not wall', () => {
-        // 初始化玩家位置
-        initKeeper({ x: 2, y: 1 })
-        // 向左移动
-        moveLeft()
-        // 测试玩家位置是否正确
-        expect(getKeeper().x).toBe(1)
-      })
-      it('should not move to left when next is wall', () => {
-        // 初始化玩家位置
-        initKeeper({ x: 1, y: 1 })
-        // 向左移动
-        moveLeft()
-        // 测试玩家位置是否正确
-        expect(getKeeper().x).toBe(1)
-      })
-    })
-
-    describe('move right', () => {
-      it('should move to right when next is not wall', () => {
-        // 初始化玩家位置
-        initKeeper({ x: 1, y: 1 })
-        // 向右移动
-        moveRight()
-        // 测试玩家位置是否正确
-        expect(getKeeper().x).toBe(2)
-      })
-      it('should not move to right when next is wall', () => {
-        // 初始化玩家位置
-        initKeeper({ x: 2, y: 1 })
-        // 向右移动
-        moveRight()
-        // 测试玩家位置是否正确
-        expect(getKeeper().x).toBe(2)
-      })
-    })
-
-    describe('move up', () => {
-      it('should move up when next is not wall', () => {
-        // 初始化玩家位置
-        initKeeper({ x: 1, y: 2 })
-        // 向上移动
-        moveUp()
-        // 测试玩家位置是否正确
-        expect(getKeeper().y).toBe(1)
-      })
-      it('should not move up when next is wall', () => {
-        // 初始化玩家位置
-        initKeeper({ x: 1, y: 1 })
-        // 向上移动
-        moveUp()
-        // 测试玩家位置是否正确
-        expect(getKeeper().y).toBe(1)
-      })
-    })
-
-    describe('move down', () => {
-      it('should move down when next is not wall', () => {
-        // 初始化玩家位置
-        initKeeper({ x: 1, y: 1 })
-        // 向下移动
-        moveDown()
-        // 测试玩家位置是否正确
-        expect(getKeeper().y).toBe(2)
-      })
-      it('should not move down when next is wall', () => {
-        // 初始化玩家位置
-        initKeeper({ x: 1, y: 2 })
-        // 向下移动
-        moveDown()
-        // 测试玩家位置是否正确
-        expect(getKeeper().y).toBe(2)
-      })
-    })
-  })
+it('should not move cargo and keeper to left when next position is wall', () => {
+  // 初始化玩家
+  initKeeper({ x: 2, y: 1 })
+  // 初始化箱子
+  initCargos([{ x: 1, y: 1 }])
+  // 向左移动
+  moveLeft()
+  // 测试箱子位置是否正确
+  const cargo = getCargos()[0]
+  expect(cargo.x).toBe(1)
+  // 测试玩家位置是否正确
+  expect(getKeeper().x).toBe(2)
 })
 ```
 
-### TDD 方式写箱子的单测
+测试是没有通过的，那我们就需要实现逻辑了
 
-然后去写箱子的单测
-
-```ts
-describe('cargo', () => {
-  beforeEach(() => {
-    initMap([
-      [1, 1, 1, 1, 1],
-      [1, 2, 2, 2, 1],
-      [1, 2, 2, 2, 1],
-      [1, 1, 1, 1, 1]
-    ])
-  })
-  it('should move cargo to left when next position is cargo', () => {
-    // 初始化玩家
-    initKeeper({ x: 3, y: 1 })
-    // 初始化箱子
-    initCargos([{ x: 2, y: 1 }])
-    // 向左移动
-    moveLeft()
-    // 测试箱子位置是否正确
-    const cargo = getCargos()[0]
-    expect(cargo.x).toBe(1)
-    // 测试玩家位置是否正确
-    expect(getKeeper().x).toBe(2)
-  })
-})
-```
-
-当然现在测试是不通过的
-
-![](public/017.png)
-
-那我们去实现一下
-
-### 实现箱子的移动
-
-箱子移动是由玩家移动触发的，所以我们应该在 `keeper.ts` 中实现
-
-按照惯例，还是先看向左移动的方法
-
-```ts
-export const moveLeft = () => {
-  if (wallCollisionLeft(_keeper)) {
-    return
-  }
-  // 1. 需要获取到 next left position 上的 cargo
-  const cargo = getCargos().find(cargo => cargo.x === _keeper.x - 1 && cargo.y === _keeper.y)
-  // 2. 改变这个 cargo 的位置
-  if (cargo) {
-    cargo.x--
-  }
-  _keeper.x--
-}
-```
-
-测试通过
-
-再去页面看看，玩家可以推着箱子移动了
-
-![](public/018.gif)
-
-### 重构箱子移动逻辑
-
-获取箱子的逻辑目前是在 `keeper.ts` 中实现的，但其实应该在 `cargo.ts` 中实现
-
-所以我们可以暴露一个 `getCargoByPosition` 的函数
-
-```ts
-export const getCargoByPosition = (position: Position): Cargo | undefined => {
-  return _cargos.find(cargo => cargo.x === position.x && cargo.y === position.y)
-}
-```
-
-然后在 `keeper.ts` 中替换一下
-
-```ts
-// 1. 需要获取到 next left position 上的 cargo
-const cargo = getCargoByPosition({ x: _keeper.x - 1, y: _keeper.y })
-```
-
-基于小步走的原则，查看测试是没问题的
-
-这样就体现出测试的好处了，修改一点点就能知道有没有问题，否则只能去页面点点才能知道有没有问题
-
-另一个重构地方就是 `{ x: _keeper.x - 1, y: _keeper.y }` 在 `moveLeft` 中，出现了两次，我们可以把它合并到一起
+其实就是调用 `wallCollisionLeft` 函数，不过 `position` 传入的是 `cargo` 的向左的下个位置
 
 ```ts
 export const moveLeft = () => {
@@ -218,33 +58,88 @@ export const moveLeft = () => {
   const cargo = getCargoByPosition(position)
   // 2. 改变这个 cargo 的位置
   if (cargo) {
+    if (wallCollisionLeft({ x: cargo.x - 1, y: cargo.y })) {
+      return
+    }
     cargo.x--
   }
   _keeper.x--
 }
 ```
 
-发现测试报错了
+测试通过，页面也没有问题
 
-由于我们是小步走开发，这种情况我们先不去找哪里错了，直接撤销修改，直到测试通过
+### 重构-提取获取 position 的方法
 
-然后我们不去修改 `wallCollisionLeft` 的参数，而是给它加一个参数：`position`
+在 `moveLeft` 函数中我们先是对 `keeper` 的 `x` 调整，再对 `cargo` 的 `x` 调整，那我们可以封装一个函数来获取 position
+
+创建一个 `game/position.ts` 文件:
 
 ```ts
-const position = { x: _keeper.x - 1, y: _keeper.y }
-if (wallCollisionLeft(_keeper, position)) {
-  return
+import { Position } from '../composables/position'
+
+export const calcLeftPosition = (position: Position) => ({
+  x: position.x - 1,
+  y: position.y
+})
+```
+
+这里的 `Position` 是我们在 `composables/position.ts` 中定义的类型，但其实应该在 `game/position.ts` 中定义
+
+所以把相关的引用都替换一下
+
+然后在 `moveLeft` 函数中调用这个函数:
+
+```ts
+export const moveLeft = () => {
+  const position = calcLeftPosition(_keeper)
+  if (wallCollisionLeft(position)) {
+    return
+  }
+  // 1. 需要获取到 next left position 上的 cargo
+  const cargo = getCargoByPosition(position)
+  // 2. 改变这个 cargo 的位置
+  if (cargo) {
+    if (wallCollisionLeft(calcLeftPosition(cargo))) {
+      return
+    }
+    cargo.x--
+  }
+  _keeper.x--
 }
 ```
 
-进到 `wallCollisionLeft` 里面，发现这里的 `x` 也减 `1` 了，而我们其实已经处理过了，所以这里就不需要再处理了
+### 重构-提取 wallCollision 的方法
+
+当初使用 `wallCollisionLeft` 时，是因为内部对传入的 `position` 进行了 `-1` 的操作，而现在这个处理已经在 `moveLeft` 函数中完成了，所以 `wallCollisionLeft` `wallCollisionRight` `wallCollisionUp` `wallCollisionDown` 内部逻辑都一样了，那其实就只需要一个函数就可以了
+
+我们先创建一个新函数：
 
 ```ts
-export const wallCollisionLeft = (position: Position) => {
+export const wallCollision = (position: Position) => {
   return getElementByPosition(position.x, position.y).name === 'Wall'
 }
 ```
 
-然后使用我们新加的参数替换旧参数就可以了
+然后在 `moveLeft` 函数中替换这个函数:
 
-测试通过了
+```ts
+export const moveLeft = () => {
+  const position = calcLeftPosition(_keeper)
+  if (wallCollision(position)) {
+    return
+  }
+  // 1. 需要获取到 next left position 上的 cargo
+  const cargo = getCargoByPosition(position)
+  // 2. 改变这个 cargo 的位置
+  if (cargo) {
+    if (wallCollision(calcLeftPosition(cargo))) {
+      return
+    }
+    cargo.x--
+  }
+  _keeper.x--
+}
+```
+
+测试通过，页面也没有问题

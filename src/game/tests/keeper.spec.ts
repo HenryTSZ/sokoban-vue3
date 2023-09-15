@@ -114,5 +114,18 @@ describe('Keeper', () => {
       // 测试玩家位置是否正确
       expect(getKeeper().x).toBe(2)
     })
+    it('should not move cargo and keeper to left when next position is wall', () => {
+      // 初始化玩家
+      initKeeper({ x: 2, y: 1 })
+      // 初始化箱子
+      initCargos([{ x: 1, y: 1 }])
+      // 向左移动
+      moveLeft()
+      // 测试箱子位置是否正确
+      const cargo = getCargos()[0]
+      expect(cargo.x).toBe(1)
+      // 测试玩家位置是否正确
+      expect(getKeeper().x).toBe(2)
+    })
   })
 })
