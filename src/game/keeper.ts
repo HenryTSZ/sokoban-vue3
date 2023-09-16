@@ -1,11 +1,12 @@
-import { Position, calcLeftPosition } from './position'
-import { getCargoByPosition } from './cargo'
 import {
-  wallCollision,
-  wallCollisionDown,
-  wallCollisionRight,
-  wallCollisionUp
-} from './keeperCollisionDetection'
+  Position,
+  calcDownPosition,
+  calcLeftPosition,
+  calcRightPosition,
+  calcUpPosition
+} from './position'
+import { getCargoByPosition } from './cargo'
+import { wallCollision } from './keeperCollisionDetection'
 
 export interface Keeper extends Position {}
 
@@ -35,22 +36,53 @@ export const moveLeft = () => {
 }
 
 export const moveRight = () => {
-  if (wallCollisionRight(_keeper)) {
+  const position = calcRightPosition(_keeper)
+  if (wallCollision(position)) {
     return
+  }
+  // 1. 需要获取到 next right position 上的 cargo
+  const cargo = getCargoByPosition(position)
+  // 2. 改变这个 cargo 的位置
+  if (cargo) {
+    if (wallCollision(calcRightPosition(cargo))) {
+      return
+    }
+    cargo.x++
   }
   _keeper.x++
 }
 
 export const moveUp = () => {
-  if (wallCollisionUp(_keeper)) {
+  const position = calcUpPosition(_keeper)
+  if (wallCollision(position)) {
     return
+  }
+  // 1. 需要获取到 next up position 上的 cargo
+  const cargo = getCargoByPosition(position)
+  // 2. 改变这个 cargo 的位置
+  if (cargo) {
+    if (wallCollision(calcUpPosition(cargo))) {
+      return
+    }
+    cargo.y--
   }
   _keeper.y--
 }
 
 export const moveDown = () => {
-  if (wallCollisionDown(_keeper)) {
+  const position = calcDownPosition(_keeper)
+  if (wallCollision(position)) {
     return
   }
+  // 1. 需要获取到 next down position 上的 cargo
+  const cargo = getCargoByPosition(position)
+  // 2. 改变这个 cargo 的位置
+  if (cargo) {
+    if (wallCollision(calcDownPosition(cargo))) {
+      return
+    }
+    cargo.y++
+  }
+
   _keeper.y++
 }

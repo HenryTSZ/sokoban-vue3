@@ -98,34 +98,124 @@ describe('Keeper', () => {
         [1, 1, 1, 1, 1],
         [1, 2, 2, 2, 1],
         [1, 2, 2, 2, 1],
+        [1, 2, 2, 2, 1],
         [1, 1, 1, 1, 1]
       ])
     })
-    it('should move cargo to left when next position is cargo', () => {
-      // 初始化玩家
-      initKeeper({ x: 3, y: 1 })
-      // 初始化箱子
-      initCargos([{ x: 2, y: 1 }])
-      // 向左移动
-      moveLeft()
-      // 测试箱子位置是否正确
-      const cargo = getCargos()[0]
-      expect(cargo.x).toBe(1)
-      // 测试玩家位置是否正确
-      expect(getKeeper().x).toBe(2)
+    describe('move left', () => {
+      it('should move cargo to left when next position is cargo', () => {
+        // 初始化玩家
+        initKeeper({ x: 3, y: 1 })
+        // 初始化箱子
+        initCargos([{ x: 2, y: 1 }])
+        // 向左移动
+        moveLeft()
+        // 测试箱子位置是否正确
+        const cargo = getCargos()[0]
+        expect(cargo.x).toBe(1)
+        // 测试玩家位置是否正确
+        expect(getKeeper().x).toBe(2)
+      })
+      it('should not move cargo and keeper to left when next position is wall', () => {
+        // 初始化玩家
+        initKeeper({ x: 2, y: 1 })
+        // 初始化箱子
+        initCargos([{ x: 1, y: 1 }])
+        // 向左移动
+        moveLeft()
+        // 测试箱子位置是否正确
+        const cargo = getCargos()[0]
+        expect(cargo.x).toBe(1)
+        // 测试玩家位置是否正确
+        expect(getKeeper().x).toBe(2)
+      })
     })
-    it('should not move cargo and keeper to left when next position is wall', () => {
-      // 初始化玩家
-      initKeeper({ x: 2, y: 1 })
-      // 初始化箱子
-      initCargos([{ x: 1, y: 1 }])
-      // 向左移动
-      moveLeft()
-      // 测试箱子位置是否正确
-      const cargo = getCargos()[0]
-      expect(cargo.x).toBe(1)
-      // 测试玩家位置是否正确
-      expect(getKeeper().x).toBe(2)
+
+    describe('move right', () => {
+      it('should move cargo to right when next position is cargo', () => {
+        // 初始化玩家
+        initKeeper({ x: 1, y: 1 })
+        // 初始化箱子
+        initCargos([{ x: 2, y: 1 }])
+        // 向右移动
+        moveRight()
+        // 测试箱子位置是否正确
+        const cargo = getCargos()[0]
+        expect(cargo.x).toBe(3)
+        // 测试玩家位置是否正确
+        expect(getKeeper().x).toBe(2)
+      })
+      it('should not move cargo and keeper to right when next position is wall', () => {
+        // 初始化玩家
+        initKeeper({ x: 2, y: 1 })
+        // 初始化箱子
+        initCargos([{ x: 3, y: 1 }])
+        // 向右移动
+        moveRight()
+        // 测试箱子位置是否正确
+        const cargo = getCargos()[0]
+        expect(cargo.x).toBe(3)
+        // 测试玩家位置是否正确
+        expect(getKeeper().x).toBe(2)
+      })
+    })
+
+    describe('move up', () => {
+      it('should move cargo to up when next position is cargo', () => {
+        // 初始化玩家
+        initKeeper({ x: 1, y: 3 })
+        // 初始化箱子
+        initCargos([{ x: 1, y: 2 }])
+        // 向上移动
+        moveUp()
+        // 测试箱子位置是否正确
+        const cargo = getCargos()[0]
+        expect(cargo.y).toBe(1)
+        // 测试玩家位置是否正确
+        expect(getKeeper().y).toBe(2)
+      })
+      it('should not move cargo and keeper to up when next position is wall', () => {
+        // 初始化玩家
+        initKeeper({ x: 1, y: 2 })
+        // 初始化箱子
+        initCargos([{ x: 1, y: 1 }])
+        // 向上移动
+        moveUp()
+        // 测试箱子位置是否正确
+        const cargo = getCargos()[0]
+        expect(cargo.y).toBe(1)
+        // 测试玩家位置是否正确
+        expect(getKeeper().y).toBe(2)
+      })
+    })
+
+    describe('move down', () => {
+      it('should move cargo to down when next position is cargo', () => {
+        // 初始化玩家
+        initKeeper({ x: 1, y: 1 })
+        // 初始化箱子
+        initCargos([{ x: 1, y: 2 }])
+        // 向下移动
+        moveDown()
+        // 测试箱子位置是否正确
+        const cargo = getCargos()[0]
+        expect(cargo.y).toBe(3)
+        // 测试玩家位置是否正确
+        expect(getKeeper().y).toBe(2)
+      })
+      it('should not move cargo and keeper to down when next position is wall', () => {
+        // 初始化玩家
+        initKeeper({ x: 1, y: 2 })
+        // 初始化箱子
+        initCargos([{ x: 1, y: 3 }])
+        // 向下移动
+        moveDown()
+        // 测试箱子位置是否正确
+        const cargo = getCargos()[0]
+        expect(cargo.y).toBe(3)
+        // 测试玩家位置是否正确
+        expect(getKeeper().y).toBe(2)
+      })
     })
   })
 })
