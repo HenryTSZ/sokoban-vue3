@@ -22,153 +22,49 @@
 
 ## [箱子的碰撞检测](https://github.com/HenryTSZ/sokoban-vue3/tree/647a0520c5c760d5ae97a63292927d7fac684306)
 
-## 完成箱子移动位置
+## [完成箱子移动位置](https://github.com/HenryTSZ/sokoban-vue3/tree/d4357f05de68758614ea555ad7a6a496b37c2abd)
 
-目前我们完成了向左的移动，接下来将剩余三个方向的移动也写一下
+## 解决 Map.vue 遗留报错问题
 
-### TDD 向右移动
+目前 `<component :is="componentMap[col.name]" />` 有类型错误
 
-```ts
-it('should move cargo to right when next position is cargo', () => {
-  // 初始化玩家
-  initKeeper({ x: 1, y: 1 })
-  // 初始化箱子
-  initCargos([{ x: 2, y: 1 }])
-  // 向右移动
-  moveRight()
-  // 测试箱子位置是否正确
-  const cargo = getCargos()[0]
-  expect(cargo.x).toBe(3)
-  // 测试玩家位置是否正确
-  expect(getKeeper().x).toBe(2)
-})
+```
+Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ Empty: DefineComponent<{}, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}, string, PublicProps, Readonly<ExtractPropTypes<{}>>, {}, {}>; Wall: DefineComponent<...>; Floor: DefineComponent<...>; }'.
+  No index signature with a parameter of type 'string' was found on type '{ Empty: DefineComponent<{}, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}, string, PublicProps, Readonly<ExtractPropTypes<{}>>, {}, {}>; Wall: DefineComponent<...>; Floor: DefineComponent<...>; }'.ts(7053)
 ```
 
-当然这时候测试是不通过的
+这是 ai 给出的答案：
 
-我们就需要去处理 `moveRight` 的逻辑了
+```
+错误信息显示，你试图使用一个字符串来索引一个对象，但该对象没有一个适用于字符串的索引签名。
 
-对比 `moveLeft`，发现有几处需要修改的：
+在你的代码中，componentMap 对象没有一个适用于字符串的索引签名，因此无法使用字符串来访问它的属性。为了解决这个错误，你可以为 componentMap 对象定义一个适用于字符串的索引签名。
 
-1. 增加了 `calcLeftPosition` 和 `wallCollision`
-2. 增加了检测箱子的逻辑
+以下是如何为 componentMap 定义一个适用于字符串的索引签名的示例：
 
-所以我们应该先去测试第一处修改
+const componentMap: Record<string, any> = {
+  Empty,
+  Wall,
+  Floor
+}
 
-那先把刚才添加的单测跳过
+通过将 `Record<string, any>` 作为 componentMap 的类型，你允许使用任何字符串作为索引来访问 componentMap 的属性。
+```
+
+确实不报错了，但 `any` 让人不知道这到底是个啥类型
+
+这里 Vue 提供了一个 `Component` 类型，它可以帮助你解决这个问题。
 
 ```ts
-it.skip('should move cargo to right when next position is cargo', () => {
-  // ...
+import { type Component } from 'vue'
+
+const componentMap: Record<string, Component> = {
+  Empty,
+  Wall,
+  Floor
 }
 ```
 
-然后增加 `calcRightPosition` 和 `wallCollision`
+这里有一个参考链接，可以帮助你理解
 
-```ts
-export const calcRightPosition = (position: Position) => ({
-  x: position.x + 1,
-  y: position.y
-})
-```
-
-```ts
-export const moveRight = () => {
-  const position = calcRightPosition(_keeper)
-  if (wallCollision(position)) {
-    return
-  }
-
-  _keeper.x++
-}
-```
-
-测试通过
-
-注：这块有一个很重要的点：一次性尽量保证只有一个测试是失败的，如果有多个测试失败了，那么就应该先跳过这些，TDD 玩的就是小步走
-
-然后增加检测箱子的逻辑
-
-```ts
-export const moveRight = () => {
-  const position = calcRightPosition(_keeper)
-  if (wallCollision(position)) {
-    return
-  }
-  // 1. 需要获取到 next right position 上的 cargo
-  const cargo = getCargoByPosition(position)
-  // 2. 改变这个 cargo 的位置
-  if (cargo) {
-    cargo.x++
-  }
-  _keeper.x++
-}
-```
-
-将跳过的单测打开，单测通过了
-
-可以看到我们这里并没有检测箱子和墙的碰撞逻辑，依然是 TDD 的小步走思想，只需要让当前的单测通过即可，不需要考虑别的，这样我们思考的负担也是最小的
-
-然后我们再增加一个和墙碰撞的单测
-
-```ts
-it('should not move cargo and keeper to right when next position is wall', () => {
-  // 初始化玩家
-  initKeeper({ x: 2, y: 1 })
-  // 初始化箱子
-  initCargos([{ x: 3, y: 1 }])
-  // 向右移动
-  moveRight()
-  // 测试箱子位置是否正确
-  const cargo = getCargos()[0]
-  expect(cargo.x).toBe(3)
-  // 测试玩家位置是否正确
-  expect(getKeeper().x).toBe(2)
-})
-```
-
-然后再补上和墙的碰撞逻辑
-
-```ts
-if (cargo) {
-  if (wallCollision(calcRightPosition(cargo))) {
-    return
-  }
-  cargo.x++
-}
-```
-
-测试通过了, 页面也没问题
-
-当然，按照惯例，我们还是给单测分一下组吧
-
-```ts
-describe('move left', () => {
-  // ...
-})
-describe('move right', () => {
-  // ...
-})
-```
-
-### TDD 向上/下移动
-
-这里我们发现我们的 `map` 数据空间不够上下移动了，所以需要增加一行
-
-```ts
-initMap([
-  [1, 1, 1, 1, 1],
-  [1, 2, 2, 2, 1],
-  [1, 2, 2, 2, 1],
-  [1, 2, 2, 2, 1],
-  [1, 1, 1, 1, 1]
-])
-```
-
-可以看到以前的测试都没有问题
-
-那按照刚才向右移动的思路来测试向上/下移动
-
-这里就不再赘述了
-
-写完以后发现 `wallCollisionLeft` / `wallCollisionRight` `wallCollisionUp` / `wallCollisionDown` 都不需要了，那就删除吧
+[Vue3 中使用 component :is 加载组件](https://blog.csdn.net/m0_51431448/article/details/122875963)

@@ -13,6 +13,7 @@ import Empty from './Empty.vue'
 import Wall from './Wall.vue'
 import Floor from './Floor.vue'
 import { initMap } from '../game/map'
+import { type Component } from 'vue'
 
 // 0. 空白
 // 1. 墙
@@ -31,7 +32,7 @@ const rowMap = [
 
 const map = initMap(rowMap)
 
-const componentMap = {
+const componentMap: Record<string, Component> = {
   Empty,
   Wall,
   Floor
