@@ -24,47 +24,188 @@
 
 ## [完成箱子移动位置](https://github.com/HenryTSZ/sokoban-vue3/tree/d4357f05de68758614ea555ad7a6a496b37c2abd)
 
-## 解决 Map.vue 遗留报错问题
+## [解决 Map.vue 遗留报错问题](https://github.com/HenryTSZ/sokoban-vue3/tree/4ac226cc42426d69b8b5ded3e3bb38ce9ad9f0aa)
 
-目前 `<component :is="componentMap[col.name]" />` 有类型错误
+## 重构移动逻辑
 
-```
-Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{ Empty: DefineComponent<{}, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}, string, PublicProps, Readonly<ExtractPropTypes<{}>>, {}, {}>; Wall: DefineComponent<...>; Floor: DefineComponent<...>; }'.
-  No index signature with a parameter of type 'string' was found on type '{ Empty: DefineComponent<{}, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}, string, PublicProps, Readonly<ExtractPropTypes<{}>>, {}, {}>; Wall: DefineComponent<...>; Floor: DefineComponent<...>; }'.ts(7053)
-```
+目前我们 4 个方向的移动逻辑大部分是相同的，只有这几个点是不同的：
 
-这是 ai 给出的答案：
+1. 根据方向计算位置的函数
+2. 需要改变的 key: "x" | "y"
+3. key 的值: 1 | -1
 
-```
-错误信息显示，你试图使用一个字符串来索引一个对象，但该对象没有一个适用于字符串的索引签名。
+### 抽离移动逻辑
 
-在你的代码中，componentMap 对象没有一个适用于字符串的索引签名，因此无法使用字符串来访问它的属性。为了解决这个错误，你可以为 componentMap 对象定义一个适用于字符串的索引签名。
+这三个不同点其实都有一个依赖项：方向
 
-以下是如何为 componentMap 定义一个适用于字符串的索引签名的示例：
-
-const componentMap: Record<string, any> = {
-  Empty,
-  Wall,
-  Floor
-}
-
-通过将 `Record<string, any>` 作为 componentMap 的类型，你允许使用任何字符串作为索引来访问 componentMap 的属性。
-```
-
-确实不报错了，但 `any` 让人不知道这到底是个啥类型
-
-这里 Vue 提供了一个 `Component` 类型，它可以帮助你解决这个问题。
+那我们先定义方向的枚举:
 
 ```ts
-import { type Component } from 'vue'
-
-const componentMap: Record<string, Component> = {
-  Empty,
-  Wall,
-  Floor
+enum Direction {
+  Left = 'left',
+  Right = 'right',
+  Up = 'up',
+  Down = 'down'
 }
 ```
 
-这里有一个参考链接，可以帮助你理解
+然后我们可以提取一个公共方法，参数就是方向，方法内部去处理不同点。
 
-[Vue3 中使用 component :is 加载组件](https://blog.csdn.net/m0_51431448/article/details/122875963)
+```ts
+const fighting = (direction: Direction) => {
+  // ...
+}
+```
+
+方法内部将三个不同点定义出来，然后根据传入的方向去赋值:
+
+```ts
+const calcPosition, directionName, directionValue
+
+switch (direction) {
+  case Direction.Left:
+    calcPosition = calcLeftPosition
+    directionName = 'x'
+    directionValue = -1
+    break
+  case Direction.Right:
+    calcPosition = calcRightPosition
+    directionName = 'x'
+    directionValue = 1
+    break
+  case Direction.Up:
+    calcPosition = calcUpPosition
+    directionName = 'y'
+    directionValue = -1
+    break
+  case Direction.Down:
+    calcPosition = calcDownPosition
+    directionName = 'y'
+    directionValue = 1
+}
+```
+
+也可以使用一个 map 对象:
+
+```ts
+const map: Record<
+  Direction,
+  {
+    calcPosition: (position: Position) => Position
+    directionName: 'x' | 'y'
+    directionValue: 1 | -1
+  }
+> = {
+  left: { calcPosition: calcLeftPosition, directionName: 'x', directionValue: -1 },
+  right: { calcPosition: calcRightPosition, directionName: 'x', directionValue: 1 },
+  up: { calcPosition: calcUpPosition, directionName: 'y', directionValue: -1 },
+  down: { calcPosition: calcDownPosition, directionName: 'y', directionValue: 1 }
+}
+```
+
+那我们就用 map 对象来处理方向了。
+
+然后我们先重构 `moveLeft` 方法:
+
+将 `moveLeft` 方法的逻辑全部拷贝到 `fighting` 方法中:
+
+```ts
+export const fighting = (direction: Direction) => {
+  const map: Record<
+    Direction,
+    {
+      calcPosition: (position: Position) => Position
+      directionName: 'x' | 'y'
+      directionValue: 1 | -1
+    }
+  > = {
+    left: { calcPosition: calcLeftPosition, directionName: 'x', directionValue: -1 },
+    right: { calcPosition: calcRightPosition, directionName: 'x', directionValue: 1 },
+    up: { calcPosition: calcUpPosition, directionName: 'y', directionValue: -1 },
+    down: { calcPosition: calcDownPosition, directionName: 'y', directionValue: 1 }
+  }
+
+  const position = calcLeftPosition(_keeper)
+  if (wallCollision(position)) {
+    return
+  }
+  // 1. 需要获取到 next left position 上的 cargo
+  const cargo = getCargoByPosition(position)
+  // 2. 改变这个 cargo 的位置
+  if (cargo) {
+    if (wallCollision(calcLeftPosition(cargo))) {
+      return
+    }
+    cargo.x--
+  }
+  _keeper.x--
+}
+```
+
+然后把那三个不同的地方修改一下：
+
+```ts
+export const fighting = (direction: Direction) => {
+  const map: Record<
+    Direction,
+    {
+      calcPosition: (position: Position) => Position
+      directionName: 'x' | 'y'
+      directionValue: 1 | -1
+    }
+  > = {
+    left: { calcPosition: calcLeftPosition, directionName: 'x', directionValue: -1 },
+    right: { calcPosition: calcRightPosition, directionName: 'x', directionValue: 1 },
+    up: { calcPosition: calcUpPosition, directionName: 'y', directionValue: -1 },
+    down: { calcPosition: calcDownPosition, directionName: 'y', directionValue: 1 }
+  }
+
+  const { calcPosition, directionName, directionValue } = map[direction]
+  const keeper = getKeeper()
+
+  const position = calcPosition(keeper)
+  if (wallCollision(position)) {
+    return
+  }
+  const cargo = getCargoByPosition(position)
+  if (cargo) {
+    if (wallCollision(calcPosition(cargo))) {
+      return
+    }
+    cargo[directionName] += directionValue
+  }
+  keeper[directionName] += directionValue
+}
+```
+
+再在 `moveLeft` 中调用 `fighting` 方法:
+
+```ts
+export const moveLeft = () => {
+  fighting(Direction.Left)
+}
+```
+
+测试没问题，页面也没问题。
+
+那继续把 `moveRight` / `moveUp` / `moveDown` 方法修改一下，也都没有问题
+
+目前 `fighting` 这个函数已经不止与 `keeper` 相关了，还与 `cargo` 相关，所以放在 `keeper.ts` 中就不合适了，我们可以使用 `VSCode` 自带的重构工具来将其提取为单独的文件。
+
+![](public/019.png)
+
+这个重构工具可以自动检测所需要的依赖，并将这些依赖提取到单独的文件中，非常方便。
+
+这样 `fighting.ts` 文件就是我们整个游戏的核心逻辑了。
+
+再看一下测试，没有问题
+
+### 抽离测试
+
+目前我们把移动逻辑抽离出来了，那相应的测试也要抽离出来了。
+
+创建一个 `src/game/test/fighting.spec.ts` 文件，内容就是把 `keeper.spec.ts` 文件中的内容复制过来，再重新整理一下
+
+我们现在就分 4 组：`move left`、`move right`、`move up`、`move down`，里面就是 `keeper.spec.ts` 文件中对应的内容。
+
+具体看 `src/game/test/fighting.spec.ts` 文件
