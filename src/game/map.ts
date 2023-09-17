@@ -10,7 +10,11 @@ export class Floor {
   public name = 'Floor'
 }
 
-export type Element = Empty | Wall | Floor
+export class Target {
+  public name = 'Target'
+}
+
+export type Element = Empty | Wall | Floor | Target
 
 let _rowMap: number[][]
 let _map: Element[][]
@@ -30,6 +34,9 @@ export const initMap = (rowMap: number[][]) => {
           break
         case 2:
           row.push(new Floor())
+          break
+        case 3:
+          row.push(new Target())
           break
       }
     }
