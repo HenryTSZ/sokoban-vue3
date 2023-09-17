@@ -26,186 +26,54 @@
 
 ## [解决 Map.vue 遗留报错问题](https://github.com/HenryTSZ/sokoban-vue3/tree/4ac226cc42426d69b8b5ded3e3bb38ce9ad9f0aa)
 
-## 重构移动逻辑
+## [重构移动逻辑](https://github.com/HenryTSZ/sokoban-vue3/tree/99b7c77ab47744ee8d1a4d6d5cbc230205fa0804)
 
-目前我们 4 个方向的移动逻辑大部分是相同的，只有这几个点是不同的：
+## 箱子与箱子的碰撞检测
 
-1. 根据方向计算位置的函数
-2. 需要改变的 key: "x" | "y"
-3. key 的值: 1 | -1
+当箱子移动方向的下一个位置是箱子时，箱子和玩家都不能移动了。
 
-### 抽离移动逻辑
-
-这三个不同点其实都有一个依赖项：方向
-
-那我们先定义方向的枚举:
+按照惯例，我们还是先写测试
 
 ```ts
-enum Direction {
-  Left = 'left',
-  Right = 'right',
-  Up = 'up',
-  Down = 'down'
-}
-```
-
-然后我们可以提取一个公共方法，参数就是方向，方法内部去处理不同点。
-
-```ts
-const fighting = (direction: Direction) => {
-  // ...
-}
-```
-
-方法内部将三个不同点定义出来，然后根据传入的方向去赋值:
-
-```ts
-const calcPosition, directionName, directionValue
-
-switch (direction) {
-  case Direction.Left:
-    calcPosition = calcLeftPosition
-    directionName = 'x'
-    directionValue = -1
-    break
-  case Direction.Right:
-    calcPosition = calcRightPosition
-    directionName = 'x'
-    directionValue = 1
-    break
-  case Direction.Up:
-    calcPosition = calcUpPosition
-    directionName = 'y'
-    directionValue = -1
-    break
-  case Direction.Down:
-    calcPosition = calcDownPosition
-    directionName = 'y'
-    directionValue = 1
-}
-```
-
-也可以使用一个 map 对象:
-
-```ts
-const map: Record<
-  Direction,
-  {
-    calcPosition: (position: Position) => Position
-    directionName: 'x' | 'y'
-    directionValue: 1 | -1
-  }
-> = {
-  left: { calcPosition: calcLeftPosition, directionName: 'x', directionValue: -1 },
-  right: { calcPosition: calcRightPosition, directionName: 'x', directionValue: 1 },
-  up: { calcPosition: calcUpPosition, directionName: 'y', directionValue: -1 },
-  down: { calcPosition: calcDownPosition, directionName: 'y', directionValue: 1 }
-}
-```
-
-那我们就用 map 对象来处理方向了。
-
-然后我们先重构 `moveLeft` 方法:
-
-将 `moveLeft` 方法的逻辑全部拷贝到 `fighting` 方法中:
-
-```ts
-export const fighting = (direction: Direction) => {
-  const map: Record<
-    Direction,
-    {
-      calcPosition: (position: Position) => Position
-      directionName: 'x' | 'y'
-      directionValue: 1 | -1
-    }
-  > = {
-    left: { calcPosition: calcLeftPosition, directionName: 'x', directionValue: -1 },
-    right: { calcPosition: calcRightPosition, directionName: 'x', directionValue: 1 },
-    up: { calcPosition: calcUpPosition, directionName: 'y', directionValue: -1 },
-    down: { calcPosition: calcDownPosition, directionName: 'y', directionValue: 1 }
-  }
-
-  const position = calcLeftPosition(_keeper)
-  if (wallCollision(position)) {
-    return
-  }
-  // 1. 需要获取到 next left position 上的 cargo
-  const cargo = getCargoByPosition(position)
-  // 2. 改变这个 cargo 的位置
-  if (cargo) {
-    if (wallCollision(calcLeftPosition(cargo))) {
-      return
-    }
-    cargo.x--
-  }
-  _keeper.x--
-}
-```
-
-然后把那三个不同的地方修改一下：
-
-```ts
-export const fighting = (direction: Direction) => {
-  const map: Record<
-    Direction,
-    {
-      calcPosition: (position: Position) => Position
-      directionName: 'x' | 'y'
-      directionValue: 1 | -1
-    }
-  > = {
-    left: { calcPosition: calcLeftPosition, directionName: 'x', directionValue: -1 },
-    right: { calcPosition: calcRightPosition, directionName: 'x', directionValue: 1 },
-    up: { calcPosition: calcUpPosition, directionName: 'y', directionValue: -1 },
-    down: { calcPosition: calcDownPosition, directionName: 'y', directionValue: 1 }
-  }
-
-  const { calcPosition, directionName, directionValue } = map[direction]
-  const keeper = getKeeper()
-
-  const position = calcPosition(keeper)
-  if (wallCollision(position)) {
-    return
-  }
-  const cargo = getCargoByPosition(position)
-  if (cargo) {
-    if (wallCollision(calcPosition(cargo))) {
-      return
-    }
-    cargo[directionName] += directionValue
-  }
-  keeper[directionName] += directionValue
-}
-```
-
-再在 `moveLeft` 中调用 `fighting` 方法:
-
-```ts
-export const moveLeft = () => {
+it('should not move cargo and keeper to left when next position is cargo', () => {
+  initKeeper({ x: 3, y: 1 })
+  initCargos([
+    { x: 2, y: 1 },
+    { x: 1, y: 1 }
+  ])
   fighting(Direction.Left)
+  const cargo = getCargos()[0]
+  expect(cargo.x).toBe(2)
+  expect(getKeeper().x).toBe(3)
+})
+```
+
+当然现在测试还是报错的，我们去实现一下这个逻辑
+
+在检测完与墙的碰撞之后，再去检测一下与箱子的碰撞。
+
+所以我们还需要一个箱子碰撞的函数：`cargoCollision`
+
+```ts
+export const cargoCollision = (position: Position) => {
+  return !!getCargoByPosition(position)
 }
 ```
 
-测试没问题，页面也没问题。
+然后调用一下：
 
-那继续把 `moveRight` / `moveUp` / `moveDown` 方法修改一下，也都没有问题
+```ts
+if (cargo) {
+  if (wallCollision(calcPosition(cargo))) {
+    return
+  }
+  if (cargoCollision(calcPosition(cargo))) {
+    return
+  }
+  cargo[directionName] += directionValue
+}
+```
 
-目前 `fighting` 这个函数已经不止与 `keeper` 相关了，还与 `cargo` 相关，所以放在 `keeper.ts` 中就不合适了，我们可以使用 `VSCode` 自带的重构工具来将其提取为单独的文件。
+测试通过了，页面也没问题
 
-![](public/019.png)
-
-这个重构工具可以自动检测所需要的依赖，并将这些依赖提取到单独的文件中，非常方便。
-
-这样 `fighting.ts` 文件就是我们整个游戏的核心逻辑了。
-
-再看一下测试，没有问题
-
-### 抽离测试
-
-目前我们把移动逻辑抽离出来了，那相应的测试也要抽离出来了。
-
-创建一个 `src/game/test/fighting.spec.ts` 文件，内容就是把 `keeper.spec.ts` 文件中的内容复制过来，再重新整理一下
-
-我们现在就分 4 组：`move left`、`move right`、`move up`、`move down`，里面就是 `keeper.spec.ts` 文件中对应的内容。
-
-具体看 `src/game/test/fighting.spec.ts` 文件
+然后我们把剩余的测试写完

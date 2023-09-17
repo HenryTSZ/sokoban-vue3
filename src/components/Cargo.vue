@@ -10,7 +10,7 @@ import { usePosition } from '../composables/position'
 
 const cargos: Cargo[] = reactive([
   { x: 4, y: 2 },
-  { x: 3, y: 6 }
+  { x: 3, y: 2 }
 ])
 initCargos(cargos)
 
