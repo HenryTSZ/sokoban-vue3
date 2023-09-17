@@ -1,6 +1,8 @@
 import { Position } from './position'
 
-export interface Cargo extends Position {}
+export interface Cargo extends Position {
+  onTargetPoint?: boolean
+}
 
 let _cargos: Cargo[] = []
 

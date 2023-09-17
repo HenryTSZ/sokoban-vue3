@@ -6,7 +6,7 @@ import {
   calcUpPosition
 } from './position'
 import { getCargoByPosition } from './cargo'
-import { cargoCollision, wallCollision } from './keeperCollisionDetection'
+import { cargoCollision, targetCollision, wallCollision } from './keeperCollisionDetection'
 import { getKeeper } from './keeper'
 
 export enum Direction {
@@ -47,6 +47,8 @@ export const fighting = (direction: Direction) => {
       return
     }
     cargo[directionName] += directionValue
+
+    cargo.onTargetPoint = targetCollision(cargo)
   }
   keeper[directionName] += directionValue
 }

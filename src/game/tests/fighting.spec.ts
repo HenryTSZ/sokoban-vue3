@@ -53,6 +53,14 @@ describe('fighting', () => {
       expect(cargo.x).toBe(2)
       expect(getKeeper().x).toBe(3)
     })
+    it('should on target place point when hit target', () => {
+      initMap([[1, 3, 2, 2, 1]])
+      initKeeper({ x: 3, y: 0 })
+      initCargos([{ x: 2, y: 0 }])
+      fighting(Direction.Left)
+      const cargo = getCargos()[0]
+      expect(cargo.onTargetPoint).toBe(true)
+    })
   })
 
   describe('move right', () => {

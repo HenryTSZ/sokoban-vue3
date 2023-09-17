@@ -30,109 +30,77 @@
 
 ## [箱子与箱子的碰撞检测](https://github.com/HenryTSZ/sokoban-vue3/tree/7531444c086a345cce0855ef7956598b19fd8ef7)
 
-## 添加放置点
+## [添加放置点](https://github.com/HenryTSZ/sokoban-vue3/tree/252048acc321dd3c0fadf645ca558d0f612f26d7)
 
-目前我们的移动逻辑都写完了，但还缺少通关的关键一步：放置点，只有把箱子都推到放置点上，才能通关。
+## 箱子与放置点的碰撞检测
 
-那具体逻辑就是：当箱子的位置发生改变后，检测箱子的位置 是不是匹配到了放置点，如果匹配上的话，那么就需要改变箱子的状态。
+具体检测逻辑：当箱子的位置发生改变后，检测箱子的位置，是不是匹配到了放置点，如果匹配上的话，那么就需要改变箱子的状态
 
-我们先将放置点添加到地图上
+继续写测试：
 
-这里有两种方式：
+由于我们当时设计的地图不满足现在的需求了，里面没有放置点，所以我们可以先在当前测试中重新创建一个地图，先保证测试通过
 
-1. 与 Cargo 类似，不属于地图的一部分，需要执行 `init` 方法
-2. 与 Empty 类似，属于地图的一部分，比上面需要处理的逻辑简单一点
-
-我们就采用第二种方式。
-
-目前我们的地图有三种类型：空白/墙/地板，再添加一个类型：放置点。
-
-还是先去写测试，由于我们已经有 `map` 的单测了，只需要在其上添加 `target` 即可
+然后添加和放置点的碰撞测试
 
 ```ts
-describe('Map', () => {
-  it('should initMap', () => {
-    const rowMap = [[0, 1, 2, 3]]
-    const map = initMap(rowMap)
-    expect(map).toEqual([[new Empty(), new Wall(), new Floor(), new Target()]])
-  })
+it('should on target place point when hit target', () => {
+  initMap([[1, 2, 2, 3, 1]])
+  initKeeper({ x: 1, y: 0 })
+  initCargos([{ x: 2, y: 0 }])
+  fighting(Direction.Left)
+  const cargo = getCargos()[0]
+  expect(cargo.onTargetPoint).toBe(true)
 })
 ```
 
-这里我们缺少 `Target` 类，我们先创建一个
+目前的测试是不通过的，我们需要处理 `cargo` 的 `onTargetPoint`
+
+先给 `Cargo` 添加一个 `onTargetPoint` 的属性
 
 ```ts
-export class Target {
-  public name = 'Target'
+export interface Cargo extends Position {
+  onTargetPoint?: boolean
 }
 ```
 
-当然测试还是报错的，我们需要去 `initMap` 方法中添加 `target`
+然后还需要添加一个与放置点的碰撞检测
 
 ```ts
-case 3:
-  row.push(new Target())
-  break
+export const targetCollision = (position: Position) => {
+  return getElementByPosition(position.x, position.y).name === 'Target'
+}
 ```
 
-这样就可以通过
+那我们还需要在 `fighting.ts` 中处理，具体检测逻辑与墙类似
 
-然后我们去修改页面组件
+```ts
+if (cargo) {
+  if (wallCollision(calcPosition(cargo))) {
+    return
+  }
+  if (cargoCollision(calcPosition(cargo))) {
+    return
+  }
+  cargo[directionName] += directionValue
 
-首先我们先创建 `Target` 组件，与 `Empty` 类似
+  cargo.onTargetPoint = targetCollision(cargo)
+}
+```
+
+测试通过了
+
+再去处理页面逻辑
 
 ```vue
 <template>
-  <img class="map-img" :src="target" />
+  <img
+    class="map-img cargo"
+    :src="cargo.onTargetPoint ? cargoOnTarget : cargoImg"
+    v-for="(cargo, index) in cargos"
+    :style="positionStyles[index].value" />
 </template>
-
-<script setup lang="ts">
-import target from '../assets/target.png'
-</script>
-
-<style scoped></style>
 ```
 
-然后在 `Map.vue` 中添加
+页面也没有问题了
 
-同时需要修改初始地图数据及 `componentMap`
-
-```ts
-<script setup lang="ts">
-import Empty from './Empty.vue'
-import Wall from './Wall.vue'
-import Floor from './Floor.vue'
-import Target from './Target.vue'
-import { initMap } from '../game/map'
-import { type Component } from 'vue'
-
-// 0. 空白
-// 1. 墙
-// 2. 地板
-// 3. 放置点
-const rowMap = [
-  [0, 0, 1, 1, 1, 1, 1, 0],
-  [1, 1, 1, 2, 2, 2, 1, 0],
-  [1, 2, 2, 2, 2, 2, 1, 0],
-  [1, 1, 1, 2, 2, 2, 1, 0],
-  [1, 2, 1, 1, 2, 2, 1, 0],
-  [1, 2, 1, 2, 2, 2, 1, 1],
-  [1, 2, 2, 3, 2, 2, 2, 1],
-  [1, 2, 2, 2, 2, 2, 2, 1],
-  [1, 1, 1, 1, 1, 1, 1, 1]
-]
-
-const map = initMap(rowMap)
-
-const componentMap: Record<string, Component> = {
-  Empty,
-  Wall,
-  Floor,
-  Target
-}
-</script>
-```
-
-这样就可以在地图上显示出来了
-
-![](public/020.png)
+![](public/021.png)
