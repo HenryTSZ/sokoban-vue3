@@ -32,46 +32,72 @@
 
 ## [添加放置点](https://github.com/HenryTSZ/sokoban-vue3/tree/252048acc321dd3c0fadf645ca558d0f612f26d7)
 
-## 箱子与放置点的碰撞检测
+## [箱子与放置点的碰撞检测](https://github.com/HenryTSZ/sokoban-vue3/tree/70da190fc5ef796eab8ed2b2f9c103f1c7e321f5)
 
-具体检测逻辑：当箱子的位置发生改变后，检测箱子的位置，是不是匹配到了放置点，如果匹配上的话，那么就需要改变箱子的状态
+## 检测游戏是否胜利
 
-继续写测试：
+当所有箱子都放置在放置点上时，游戏胜利，弹出进入下一关的按钮
 
-由于我们当时设计的地图不满足现在的需求了，里面没有放置点，所以我们可以先在当前测试中重新创建一个地图，先保证测试通过
+这个触发逻辑就是玩家推完箱子以后，循环所有箱子，判断其 `onTargetPosition` 是否为 `true`，当所有为 `true` 时，游戏胜利
 
-然后添加和放置点的碰撞测试
+### TDD 游戏是否胜利
+
+我们先来写测试
 
 ```ts
-it('should on target place point when hit target', () => {
-  initMap([[1, 2, 2, 3, 1]])
-  initKeeper({ x: 1, y: 0 })
-  initCargos([{ x: 2, y: 0 }])
-  fighting(Direction.Left)
-  const cargo = getCargos()[0]
-  expect(cargo.onTargetPoint).toBe(true)
+describe('game statue', () => {
+  it('should game win when all cargo hit all target', () => {
+    initMap([[1, 2, 2, 3, 1]])
+    initKeeper({ x: 0, y: 1 })
+    initCargos([{ x: 0, y: 2 }])
+    fighting(Direction.Right)
+    const game = getGame()
+    expect(game.isWin).toBe(true)
+  })
 })
 ```
 
-目前的测试是不通过的，我们需要处理 `cargo` 的 `onTargetPoint`
+目前我们没有 `getGame` 方法，所以先实现它
 
-先给 `Cargo` 添加一个 `onTargetPoint` 的属性
+### 创建 game
+
+由上面的测试我们可知：`game` 有两个属性，一个是代表游戏是否胜利的 `win`，另一个是代表当前关卡的 `level`
+
+创建 `src/game/game.ts` 文件，并添加如下代码
 
 ```ts
-export interface Cargo extends Position {
-  onTargetPoint?: boolean
+export interface Game {
+  isWin: boolean
+  level: number
+}
+
+let _game: Game
+
+export const initGame = (game: Game) => {
+  _game = game
+}
+
+export const getGame = () => {
+  return _game
 }
 ```
 
-然后还需要添加一个与放置点的碰撞检测
+然后在测试方法中添加 `initGame`
 
 ```ts
-export const targetCollision = (position: Position) => {
-  return getElementByPosition(position.x, position.y).name === 'Target'
-}
+initGame({
+  isWin: false,
+  level: 1
+})
 ```
 
-那我们还需要在 `fighting.ts` 中处理，具体检测逻辑与墙类似
+当然现在测试是不通过的，预期是 `true`，实际是 `false`
+
+### 实现 isWin
+
+我们上面已经分析了 `isWin` 的实现逻辑：玩家推完箱子以后，循环所有箱子，判断其 `onTargetPosition` 是否为 `true`，当所有为 `true` 时，游戏胜利
+
+所以我们还需要去 `fighting` 方法中添加 `isWin` 逻辑
 
 ```ts
 if (cargo) {
@@ -84,23 +110,151 @@ if (cargo) {
   cargo[directionName] += directionValue
 
   cargo.onTargetPoint = targetCollision(cargo)
+
+  const game = getGame()
+  if (game) {
+    game.isWin = getCargos().every(cargo => cargo.onTargetPoint)
+  }
 }
 ```
 
 测试通过了
 
-再去处理页面逻辑
+然后我们去页面处理一下
 
 ```vue
 <template>
-  <img
-    class="map-img cargo"
-    :src="cargo.onTargetPoint ? cargoOnTarget : cargoImg"
-    v-for="(cargo, index) in cargos"
-    :style="positionStyles[index].value" />
+  <div class="container">
+    <Map />
+    <Keeper />
+    <Cargo />
+    <div v-if="game.isWin">恭喜你,你已经通关了!</div>
+  </div>
 </template>
+
+<script setup lang="ts">
+import Map from './Map.vue'
+import Keeper from './Keeper.vue'
+import Cargo from './Cargo.vue'
+import { reactive } from 'vue'
+import { initGame } from '../game/game'
+
+const game = reactive({
+  isWin: false,
+  level: 1
+})
+initGame(game)
+</script>
+
+<style scoped>
+.container {
+  position: relative;
+}
+</style>
 ```
 
-页面也没有问题了
+也没有问题
 
-![](public/021.png)
+![](public/022.png)
+
+### 重构
+
+目前我们更新游戏状态是在 `fighting` 方法中，属于低层次的代码，所以我们可以将更新游戏状态的逻辑提取出来
+
+在 `game.ts` 文件中
+
+```ts
+export const judgeGameWin = () => {
+  _game.isWin = getCargos().every(cargo => cargo.onTargetPoint)
+}
+```
+
+但 `getCargos().every(cargo => cargo.onTargetPoint)` 又是和 `cargo` 相关的，所以我们可以把这个逻辑提取到 `cargo.ts` 中
+
+在 `cargo.ts` 中
+
+```ts
+export const isAllCargoOnTarget = (): boolean => {
+  return _cargos.every(cargo => cargo.onTargetPoint)
+}
+```
+
+最终代码：
+
+`fighting.ts`
+
+```ts
+if (cargo) {
+  if (wallCollision(calcPosition(cargo))) {
+    return
+  }
+  if (cargoCollision(calcPosition(cargo))) {
+    return
+  }
+  cargo[directionName] += directionValue
+
+  cargo.onTargetPoint = targetCollision(cargo)
+
+  judgeGameWin()
+}
+```
+
+`game.ts`
+
+```ts
+export const judgeGameWin = () => {
+  _game.isWin = isAllCargoOnTarget()
+}
+```
+
+这时候我们检测游戏是否胜利的测试是通过的，但以前移动箱子的测试报错了，是因为我们没有初始化 `game`，导致更新 `isWin` 的时候报错了：
+
+> TypeError: Cannot set properties of undefined (setting 'isWin')
+
+我们可以在 `beforeEach` 方法中初始化 `game`
+
+```ts
+beforeEach(() => {
+  initMap([
+    [1, 1, 1, 1, 1],
+    [1, 2, 2, 2, 1],
+    [1, 2, 2, 2, 1],
+    [1, 2, 2, 2, 1],
+    [1, 1, 1, 1, 1]
+  ])
+  initGame({
+    isWin: false,
+    level: 1
+  })
+})
+```
+
+这样就没问题了
+
+同样的，`cargo.onTargetPoint = targetCollision(cargo)` 也可以重构一下，提取到 `cargo.ts` 中
+
+```ts
+export const handleHitTargetPoint = (cargo: Cargo): void => {
+  cargo.onTargetPoint = targetCollision(cargo)
+}
+```
+
+`fighting.ts` 调用一下
+
+```ts
+if (cargo) {
+  if (wallCollision(calcPosition(cargo))) {
+    return
+  }
+  if (cargoCollision(calcPosition(cargo))) {
+    return
+  }
+  cargo[directionName] += directionValue
+
+  handleHitTargetPoint(cargo)
+
+  judgeGameWin()
+}
+```
+
+测试通过，页面也没问题

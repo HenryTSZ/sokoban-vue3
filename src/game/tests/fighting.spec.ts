@@ -3,6 +3,7 @@ import { initMap } from '../map'
 import { getKeeper, initKeeper } from '../keeper'
 import { Direction, fighting } from '../fighting'
 import { getCargos, initCargos } from '../cargo'
+import { getGame, initGame } from '../game'
 
 describe('fighting', () => {
   beforeEach(() => {
@@ -13,6 +14,10 @@ describe('fighting', () => {
       [1, 2, 2, 2, 1],
       [1, 1, 1, 1, 1]
     ])
+    initGame({
+      isWin: false,
+      level: 1
+    })
   })
 
   describe('move left', () => {
@@ -180,6 +185,17 @@ describe('fighting', () => {
       const cargo = getCargos()[0]
       expect(cargo.y).toBe(2)
       expect(getKeeper().y).toBe(1)
+    })
+  })
+
+  describe('game statue', () => {
+    it('should game win when all cargo hit all target', () => {
+      initMap([[1, 2, 2, 3, 1]])
+      initKeeper({ x: 1, y: 0 })
+      initCargos([{ x: 2, y: 0 }])
+      fighting(Direction.Right)
+      const game = getGame()
+      expect(game.isWin).toBe(true)
     })
   })
 })
