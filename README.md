@@ -34,227 +34,159 @@
 
 ## [箱子与放置点的碰撞检测](https://github.com/HenryTSZ/sokoban-vue3/tree/70da190fc5ef796eab8ed2b2f9c103f1c7e321f5)
 
-## 检测游戏是否胜利
+## [检测游戏是否胜利](https://github.com/HenryTSZ/sokoban-vue3/tree/c99ae23cefbc9ebf360e413b09fb4741f368e2cf)
 
-当所有箱子都放置在放置点上时，游戏胜利，弹出进入下一关的按钮
+## 进入下一关
 
-这个触发逻辑就是玩家推完箱子以后，循环所有箱子，判断其 `onTargetPosition` 是否为 `true`，当所有为 `true` 时，游戏胜利
+游戏胜利以后要怎么办呢？应该是进入下一关
 
-### TDD 游戏是否胜利
+在此之前，我们还需要处理几件事：
 
-我们先来写测试
+1. 重置所有数据
+2. 获取到下一关数据并初始化
+3. 跳转到下一关
 
-```ts
-describe('game statue', () => {
-  it('should game win when all cargo hit all target', () => {
-    initMap([[1, 2, 2, 3, 1]])
-    initKeeper({ x: 0, y: 1 })
-    initCargos([{ x: 0, y: 2 }])
-    fighting(Direction.Right)
-    const game = getGame()
-    expect(game.isWin).toBe(true)
-  })
-})
-```
+这里的关卡数据就包括 地图数据/箱子数据/玩家数据
 
-目前我们没有 `getGame` 方法，所以先实现它
+由于现在这些数据都在各自组件中, 所以我们需要把它们抽离出来，我们需要先创建一个所有关卡的数据
 
-### 创建 game
+### 创建关卡数据
 
-由上面的测试我们可知：`game` 有两个属性，一个是代表游戏是否胜利的 `win`，另一个是代表当前关卡的 `level`
+在 `src/game/gameData.ts` 中创建关卡数据，第一关的数据就使用我们之前创建的，为了能快速通关，我们就设置一个放置点吧，第二关我们就先改变一下地图数据，别的先不动，能渲染就可以
 
-创建 `src/game/game.ts` 文件，并添加如下代码
+具体的代码见 `src/game/gameData.ts`
+
+如何拿到关卡数据呢？
+
+可以通过 `gameDatas[getGame().level]` 拿到对应关卡的数据, 然后初始化地图等数据
+
+### 初始化地图等数据
 
 ```ts
-export interface Game {
-  isWin: boolean
-  level: number
-}
-
-let _game: Game
-
-export const initGame = (game: Game) => {
-  _game = game
-}
-
-export const getGame = () => {
-  return _game
-}
+const map = initMap(gameDatas[getGame().level].map)
 ```
 
-然后在测试方法中添加 `initGame`
+由于我们初始化的 `level` 是 1，所以这里的数据应该是第二关的数据，而我们需要的是第一关的数据，所以初始化还是改成 0 吧，方便取值
 
 ```ts
-initGame({
-  isWin: false,
-  level: 1
-})
-```
-
-当然现在测试是不通过的，预期是 `true`，实际是 `false`
-
-### 实现 isWin
-
-我们上面已经分析了 `isWin` 的实现逻辑：玩家推完箱子以后，循环所有箱子，判断其 `onTargetPosition` 是否为 `true`，当所有为 `true` 时，游戏胜利
-
-所以我们还需要去 `fighting` 方法中添加 `isWin` 逻辑
-
-```ts
-if (cargo) {
-  if (wallCollision(calcPosition(cargo))) {
-    return
-  }
-  if (cargoCollision(calcPosition(cargo))) {
-    return
-  }
-  cargo[directionName] += directionValue
-
-  cargo.onTargetPoint = targetCollision(cargo)
-
-  const game = getGame()
-  if (game) {
-    game.isWin = getCargos().every(cargo => cargo.onTargetPoint)
-  }
-}
-```
-
-测试通过了
-
-然后我们去页面处理一下
-
-```vue
-<template>
-  <div class="container">
-    <Map />
-    <Keeper />
-    <Cargo />
-    <div v-if="game.isWin">恭喜你,你已经通关了!</div>
-  </div>
-</template>
-
-<script setup lang="ts">
-import Map from './Map.vue'
-import Keeper from './Keeper.vue'
-import Cargo from './Cargo.vue'
-import { reactive } from 'vue'
-import { initGame } from '../game/game'
-
 const game = reactive({
   isWin: false,
-  level: 1
+  level: 0
 })
-initGame(game)
-</script>
-
-<style scoped>
-.container {
-  position: relative;
-}
-</style>
 ```
 
-也没有问题
+数据拿到了，页面也能正常渲染了
 
-![](public/022.png)
-
-### 重构
-
-目前我们更新游戏状态是在 `fighting` 方法中，属于低层次的代码，所以我们可以将更新游戏状态的逻辑提取出来
-
-在 `game.ts` 文件中
+同理将玩家和箱子数据初始化
 
 ```ts
-export const judgeGameWin = () => {
-  _game.isWin = getCargos().every(cargo => cargo.onTargetPoint)
-}
+const keeper: Keeper = reactive(gameDatas[getGame().level].keeper)
+
+const cargos: Cargo[] = reactive(gameDatas[getGame().level].cargos)
 ```
 
-但 `getCargos().every(cargo => cargo.onTargetPoint)` 又是和 `cargo` 相关的，所以我们可以把这个逻辑提取到 `cargo.ts` 中
+页面显示没问题，功能也正常
 
-在 `cargo.ts` 中
+![](public/023.png)
 
-```ts
-export const isAllCargoOnTarget = (): boolean => {
-  return _cargos.every(cargo => cargo.onTargetPoint)
-}
+### 进入下一关逻辑
+
+目前我们通关以后，只是显示了文字提示，应该再加一个按钮，进入下一关
+
+```vue
+<div v-if="game.isWin">
+  恭喜你,你已经通关了!
+  <button @click="handleNextLevel">下一关</button>
+</div>
+
+const handleNextLevel = () => { game.level++ }
 ```
 
-最终代码：
+页面显示没问题，但点击后却没改变
 
-`fighting.ts`
+这是肯定的啊，我们的 `initMap` 等函数只执行了一遍，`level` 改变后并没有再执行
+
+所以我们需要监听 `getGame().level` 的变化，当变化的时候执行 `initMap` 等函数
 
 ```ts
-if (cargo) {
-  if (wallCollision(calcPosition(cargo))) {
-    return
-  }
-  if (cargoCollision(calcPosition(cargo))) {
-    return
-  }
-  cargo[directionName] += directionValue
+let map: Element[][]
 
-  cargo.onTargetPoint = targetCollision(cargo)
-
-  judgeGameWin()
-}
+watchEffect(() => {
+  map = initMap(gameDatas[getGame().level].map)
+  console.log('🚀 ~ file: Map.vue:30 ~ watchEffect ~ map:', map)
+})
 ```
 
-`game.ts`
+但点击后仍然没有改变
+
+通过打印输出可知数据已经变化了：
+
+![](public/024.png)
+
+那这又是响应式的问题了，需要使用 `reactive` 进行包装
 
 ```ts
-export const judgeGameWin = () => {
-  _game.isWin = isAllCargoOnTarget()
-}
-```
+let map: Element[][] = reactive([])
 
-这时候我们检测游戏是否胜利的测试是通过的，但以前移动箱子的测试报错了，是因为我们没有初始化 `game`，导致更新 `isWin` 的时候报错了：
-
-> TypeError: Cannot set properties of undefined (setting 'isWin')
-
-我们可以在 `beforeEach` 方法中初始化 `game`
-
-```ts
-beforeEach(() => {
-  initMap([
-    [1, 1, 1, 1, 1],
-    [1, 2, 2, 2, 1],
-    [1, 2, 2, 2, 1],
-    [1, 2, 2, 2, 1],
-    [1, 1, 1, 1, 1]
-  ])
-  initGame({
-    isWin: false,
-    level: 1
+watchEffect(() => {
+  initMap(gameDatas[getGame().level].map).forEach((row, index) => {
+    map[index] = row
   })
+  console.log('🚀 ~ file: Map.vue:30 ~ watchEffect ~ map:', map)
 })
 ```
 
-这样就没问题了
+这样点击下一关后地图就变化了
 
-同样的，`cargo.onTargetPoint = targetCollision(cargo)` 也可以重构一下，提取到 `cargo.ts` 中
+![](public/025.png)
+
+那我们再处理一下玩家和箱子的数据
 
 ```ts
-export const handleHitTargetPoint = (cargo: Cargo): void => {
-  cargo.onTargetPoint = targetCollision(cargo)
+let keeper: Keeper = reactive({} as Keeper)
+let positionStyle: ComputedRef<string>
+
+watchEffect(() => {
+  const keeperData = gameDatas[getGame().level].keeper
+  keeper.x = keeperData.x
+  keeper.y = keeperData.y
+  initKeeper(keeper)
+
+  positionStyle = usePosition(keeper)
+})
+```
+
+```ts
+let cargos: Cargo[] = reactive([])
+let positionStyles: ComputedRef<string>[]
+
+watchEffect(() => {
+  gameDatas[getGame().level].cargos.forEach(cargo => {
+    cargos.push(cargo)
+  })
+  initCargos(cargos)
+
+  positionStyles = cargos.map(cargo => usePosition(cargo))
+})
+```
+
+现在进入下一关所有数据都变了，但箱子由于我们没有清除上一关的数据，所以还是会显示上一关的箱子，而且通关状态也没有改变
+
+![](public/026.png)
+
+所以在 `push` 前需要清空数组，`map` 由于我们直接修改的 `index`，所以可以正常显示，不过也还是清除一下吧，万一两关地图大小不一致，就有问题了
+
+清除就使用 `map.length = 0` 和 `cargos.length = 0` 就可以了
+
+通关状态也重置一下
+
+```ts
+const handleNextLevel = () => {
+  game.level++
+  game.isWin = false
 }
 ```
 
-`fighting.ts` 调用一下
+这样就没有问题了
 
-```ts
-if (cargo) {
-  if (wallCollision(calcPosition(cargo))) {
-    return
-  }
-  if (cargoCollision(calcPosition(cargo))) {
-    return
-  }
-  cargo[directionName] += directionValue
-
-  handleHitTargetPoint(cargo)
-
-  judgeGameWin()
-}
-```
-
-测试通过，页面也没问题
+![](public/027.png)

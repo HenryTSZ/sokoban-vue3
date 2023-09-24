@@ -3,19 +3,24 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, reactive } from 'vue'
+import { ComputedRef, onMounted, onUnmounted, reactive, watchEffect } from 'vue'
 import keeperSrc from '../assets/keeper.png'
 import { type Keeper, initKeeper, moveLeft, moveRight, moveUp, moveDown } from '../game/keeper'
 import { usePosition } from '../composables/position'
+import { gameDatas } from '../game/gameData'
+import { getGame } from '../game/game'
 
-const keeper: Keeper = reactive({
-  x: 5,
-  y: 1
+let keeper: Keeper = reactive({} as Keeper)
+let positionStyle: ComputedRef<string>
+
+watchEffect(() => {
+  const keeperData = gameDatas[getGame().level].keeper
+  keeper.x = keeperData.x
+  keeper.y = keeperData.y
+  initKeeper(keeper)
+
+  positionStyle = usePosition(keeper)
 })
-initKeeper(keeper)
-
-const positionStyle = usePosition(keeper)
-console.log('🚀 ~ file: Keeper.vue:18 ~ positionStyle:', positionStyle)
 
 function handleKeyup(e: KeyboardEvent) {
   switch (e.code) {

@@ -3,7 +3,9 @@
     <Map />
     <Keeper />
     <Cargo />
-    <div v-if="game.isWin">恭喜你,你已经通关了!</div>
+    <div v-if="game.isWin">
+      恭喜你,你已经通关了! <button @click="handleNextLevel">下一关</button>
+    </div>
   </div>
 </template>
 
@@ -16,9 +18,14 @@ import { initGame } from '../game/game'
 
 const game = reactive({
   isWin: false,
-  level: 1
+  level: 0
 })
 initGame(game)
+
+const handleNextLevel = () => {
+  game.level++
+  game.isWin = false
+}
 </script>
 
 <style scoped>
