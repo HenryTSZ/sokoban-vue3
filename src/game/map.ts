@@ -16,12 +16,15 @@ export class Target {
 
 export type Element = Empty | Wall | Floor | Target
 
-let _rowMap: number[][]
-let _map: Element[][]
+export type Map = Element[][]
+
+let _map: Map = []
+export function setupMap(map: Map) {
+  _map = map
+}
 
 export const initMap = (rowMap: number[][]) => {
-  _rowMap = rowMap
-  const map = []
+  _map.length = 0
   for (let i = 0; i < rowMap.length; i++) {
     const row = []
     for (let j = 0; j < rowMap[i].length; j++) {
@@ -40,13 +43,12 @@ export const initMap = (rowMap: number[][]) => {
           break
       }
     }
-    map.push(row)
+    _map.push(row)
   }
-  _map = map
-  return map
+  return _map
 }
 
-export const getMap = () => ({ map: _map, rowMap: _rowMap })
+export const getMap = () => _map
 
 export const getElementByPosition = (x: number, y: number) => {
   return _map[y][x]

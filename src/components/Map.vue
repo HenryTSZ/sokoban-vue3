@@ -13,25 +13,11 @@ import Empty from './Empty.vue'
 import Wall from './Wall.vue'
 import Floor from './Floor.vue'
 import Target from './Target.vue'
-import { Element, initMap } from '../game/map'
-import { watchEffect, type Component, reactive } from 'vue'
-import { gameDatas } from '../game/gameData'
-import { getGame } from '../game/game'
+import { Element, setupMap } from '../game/map'
+import { type Component, reactive } from 'vue'
 
-// 0. 空白
-// 1. 墙
-// 2. 地板
-// 3. 放置点
-
-let map: Element[][] = reactive([])
-
-watchEffect(() => {
-  map.length = 0
-  initMap(gameDatas[getGame().level].map).forEach((row, index) => {
-    map[index] = row
-  })
-  console.log('🚀 ~ file: Map.vue:30 ~ watchEffect ~ map:', map)
-})
+const map: Element[][] = reactive([])
+setupMap(map)
 
 const componentMap: Record<string, Component> = {
   Empty,

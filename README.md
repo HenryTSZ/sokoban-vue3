@@ -36,157 +36,267 @@
 
 ## [检测游戏是否胜利](https://github.com/HenryTSZ/sokoban-vue3/tree/c99ae23cefbc9ebf360e413b09fb4741f368e2cf)
 
-## 进入下一关
+## [进入下一关](https://github.com/HenryTSZ/sokoban-vue3/tree/07c7d67d567e639c7ce7471e20274de27e894482)
 
-游戏胜利以后要怎么办呢？应该是进入下一关
+## 重构所有数据处理
 
-在此之前，我们还需要处理几件事：
+目前我们是在各个 UI 组件内监听 `level` 的变化，再重新获取对应的数据，然后重新渲染。
 
-1. 重置所有数据
-2. 获取到下一关数据并初始化
-3. 跳转到下一关
+那其实我们可以在 `level` 改变的方法里统一处理所有数据的变化。
 
-这里的关卡数据就包括 地图数据/箱子数据/玩家数据
+### 抽离改变 `level` 的方法
 
-由于现在这些数据都在各自组件中, 所以我们需要把它们抽离出来，我们需要先创建一个所有关卡的数据
-
-### 创建关卡数据
-
-在 `src/game/gameData.ts` 中创建关卡数据，第一关的数据就使用我们之前创建的，为了能快速通关，我们就设置一个放置点吧，第二关我们就先改变一下地图数据，别的先不动，能渲染就可以
-
-具体的代码见 `src/game/gameData.ts`
-
-如何拿到关卡数据呢？
-
-可以通过 `gameDatas[getGame().level]` 拿到对应关卡的数据, 然后初始化地图等数据
-
-### 初始化地图等数据
+目前改变 `level` 的方法在 `Game.vue` 中，所以我们需要将其提取到 `game.ts` 中。
 
 ```ts
-const map = initMap(gameDatas[getGame().level].map)
-```
-
-由于我们初始化的 `level` 是 1，所以这里的数据应该是第二关的数据，而我们需要的是第一关的数据，所以初始化还是改成 0 吧，方便取值
-
-```ts
-const game = reactive({
-  isWin: false,
-  level: 0
-})
-```
-
-数据拿到了，页面也能正常渲染了
-
-同理将玩家和箱子数据初始化
-
-```ts
-const keeper: Keeper = reactive(gameDatas[getGame().level].keeper)
-
-const cargos: Cargo[] = reactive(gameDatas[getGame().level].cargos)
-```
-
-页面显示没问题，功能也正常
-
-![](public/023.png)
-
-### 进入下一关逻辑
-
-目前我们通关以后，只是显示了文字提示，应该再加一个按钮，进入下一关
-
-```vue
-<div v-if="game.isWin">
-  恭喜你,你已经通关了!
-  <button @click="handleNextLevel">下一关</button>
-</div>
-
-const handleNextLevel = () => { game.level++ }
-```
-
-页面显示没问题，但点击后却没改变
-
-这是肯定的啊，我们的 `initMap` 等函数只执行了一遍，`level` 改变后并没有再执行
-
-所以我们需要监听 `getGame().level` 的变化，当变化的时候执行 `initMap` 等函数
-
-```ts
-let map: Element[][]
-
-watchEffect(() => {
-  map = initMap(gameDatas[getGame().level].map)
-  console.log('🚀 ~ file: Map.vue:30 ~ watchEffect ~ map:', map)
-})
-```
-
-但点击后仍然没有改变
-
-通过打印输出可知数据已经变化了：
-
-![](public/024.png)
-
-那这又是响应式的问题了，需要使用 `reactive` 进行包装
-
-```ts
-let map: Element[][] = reactive([])
-
-watchEffect(() => {
-  initMap(gameDatas[getGame().level].map).forEach((row, index) => {
-    map[index] = row
-  })
-  console.log('🚀 ~ file: Map.vue:30 ~ watchEffect ~ map:', map)
-})
-```
-
-这样点击下一关后地图就变化了
-
-![](public/025.png)
-
-那我们再处理一下玩家和箱子的数据
-
-```ts
-let keeper: Keeper = reactive({} as Keeper)
-let positionStyle: ComputedRef<string>
-
-watchEffect(() => {
-  const keeperData = gameDatas[getGame().level].keeper
-  keeper.x = keeperData.x
-  keeper.y = keeperData.y
-  initKeeper(keeper)
-
-  positionStyle = usePosition(keeper)
-})
-```
-
-```ts
-let cargos: Cargo[] = reactive([])
-let positionStyles: ComputedRef<string>[]
-
-watchEffect(() => {
-  gameDatas[getGame().level].cargos.forEach(cargo => {
-    cargos.push(cargo)
-  })
-  initCargos(cargos)
-
-  positionStyles = cargos.map(cargo => usePosition(cargo))
-})
-```
-
-现在进入下一关所有数据都变了，但箱子由于我们没有清除上一关的数据，所以还是会显示上一关的箱子，而且通关状态也没有改变
-
-![](public/026.png)
-
-所以在 `push` 前需要清空数组，`map` 由于我们直接修改的 `index`，所以可以正常显示，不过也还是清除一下吧，万一两关地图大小不一致，就有问题了
-
-清除就使用 `map.length = 0` 和 `cargos.length = 0` 就可以了
-
-通关状态也重置一下
-
-```ts
-const handleNextLevel = () => {
-  game.level++
-  game.isWin = false
+export const handleNextLevel = () => {
+  const level = _game.level + 1
+  _game.level = level
+  _game.isWin = false
 }
 ```
 
-这样就没有问题了
+然后将 `handleNextLevel` 引入到 `Game.vue` 中即可
 
-![](public/027.png)
+```ts
+import { initGame, handleNextLevel } from '../game/game'
+```
+
+### 统一处理所有数据的变化
+
+#### 抽离响应式数据思维
+
+那在 `handleNextLevel` 方法里，我们需要统一处理所有数据的变化。
+
+先处理 `map` 的逻辑，将 `watchEffect` 中的逻辑抽离到 `map.ts`
+
+但这里出现问题了，`watchEffect` 里的 `map` 在 `Map.vue` 中是响应式对象，而我们这里没有响应式了。
+
+除非我们在 `map.ts` 中声明 `_map` 的时候就使用 `reactive` 来声明，但这样就将 `UI` 与数据耦合了。
+
+那我们可以这样，还是在 `Map.vue` 中使用 `reactive` 来声明，然后调用一个方法，将这个 `reactive` 的对象传入到 `map.ts` 中，这样响应式还在，`UI` 与数据也不耦合了
+
+UI 逻辑里面也有响应式的索引，数据层也可以通过 `getMap` 方法拿到，也方便其他组件调用，测试逻辑也不需要改动
+
+#### 处理 `map` 的逻辑
+
+在 `map.ts` 中创建
+
+```ts
+export type Map = Element[][]
+
+let _map: Map
+export function setupMap(map: Map) {
+  _map = map
+}
+```
+
+而且我们以前在 `initMap` 里保留了原始的 `Map` 数据和处理后的 `Map` 数据，但我们后续并没有使用原始数据，所以我们就不保留了，直接处理数据
+
+```ts
+export const initMap = (rowMap: number[][]) => {
+  _map.length = 0
+  for (let i = 0; i < rowMap.length; i++) {
+    const row = []
+    for (let j = 0; j < rowMap[i].length; j++) {
+      switch (rowMap[i][j]) {
+        case 0:
+          row.push(new Empty())
+          break
+        case 1:
+          row.push(new Wall())
+          break
+        case 2:
+          row.push(new Floor())
+          break
+        case 3:
+          row.push(new Target())
+          break
+      }
+    }
+    _map.push(row)
+  }
+  return _map
+}
+```
+
+查看单测发现报错了：
+
+> TypeError: Cannot set properties of undefined (setting 'length')
+
+这个是因为我们没有给 `_map` 初始值，所以它是 `undefined`，那就加一个吧
+
+```ts
+let _map: Map = []
+```
+
+当然，`getMap` 方法也需要改变
+
+```ts
+export const getMap = () => _map
+```
+
+然后我们在 `Map.vue` 中使用
+
+```ts
+const map: Element[][] = reactive([])
+setupMap(map)
+```
+
+再在 `game.ts` 中调用 `initMap` 方法
+
+```ts
+export const handleNextLevel = () => {
+  const level = _game.level + 1
+  _game.level = level
+  _game.isWin = false
+  initData()
+}
+
+const initData = () => {
+  const { map } = gameDatas[_game.level]
+  initMap(map)
+}
+```
+
+但这只解决了进入下一关的初始化数据，游戏最开始还没有初始化呢
+
+#### 开始游戏逻辑
+
+所以我们还需要一个 `startGame` 的方法，内部就是调用 `initData` 方法
+
+```ts
+export const startGame = () => {
+  initData()
+}
+```
+
+然后我们在 `Game.vue` 中调用
+
+```ts
+startGame()
+```
+
+但地图没有渲染出来
+
+![](public/028.png)
+
+这是因为 `Game.vue` 是父组件，先渲染，先执行 `startGame` 方法，`initData` 方法里调用 `initMap`，但此时还没有 `setupMap`，`_map` 还是初始值：`[]`，所以 `_map` 还不是响应式对象。接下来才是 `Map.vue` 方法执行 `setupMap` 方法，但这里只是将 `_map` 初始化了，没有调用 `initMap` 方法，所以地图没有渲染出来。
+
+那就好办了，我们让 `startGame` 在 `setupMap` 之后执行就可以了，先加一个 `setTimeout` 试试
+
+```ts
+setTimeout(() => {
+  startGame()
+})
+```
+
+地图渲染出来了
+
+那其实我们可以在页面加一个开始游戏的按钮，点击调用 `startGame` 方法，这样就可以保证肯定是在 `setupMap` 之后调用了
+
+所以我们 `Game` 类型还需要一个参数，标识是否是开始游戏：`loaded: boolean`
+
+```ts
+export interface Game {
+  loaded: boolean
+  isWin: boolean
+  level: number
+}
+```
+
+`startGame` 方法中需要将其改成 `true`
+
+```ts
+export const startGame = () => {
+  _game.loaded = true
+  initData()
+}
+```
+
+然后在 `Game.vue` 中调用
+
+```html
+<button v-if="!game.loaded" @click="startGame">开始游戏</button>
+```
+
+![](public/029.gif)
+
+但 `Keeper` 与 `Cargo` 初始展示有点问题，我们也需要和 `Map` 一样，处理一下数据
+
+#### 处理 `Keeper` 与 `Cargo` 的数据
+
+有了处理 `Map` 数据的经验，我们就可以很轻松的处理 `Keeper` 与 `Cargo` 的数据了
+
+game.ts
+
+```ts
+const initData = () => {
+  const { map, keeper, cargos } = gameDatas[_game.level]
+  initMap(map)
+  initKeeper(keeper)
+  initCargos(cargos)
+}
+```
+
+keeper.ts:
+
+```ts
+let _keeper: Keeper = {} as Keeper
+
+export const setupKeeper = (keeper: Keeper) => {
+  _keeper = keeper
+}
+
+export const initKeeper = (keeper: Keeper) => {
+  _keeper.x = keeper.x
+  _keeper.y = keeper.y
+}
+```
+
+Keeper.vue:
+
+```ts
+const keeper: Keeper = reactive({} as Keeper)
+setupKeeper(keeper)
+const positionStyle = usePosition(keeper)
+```
+
+但在开始游戏之前 `Keeper` 就出现了，所以需要判断一下：
+
+```vue
+<img v-if="keeper.x !== undefined" class="map-img keeper" :src="keeperSrc" :style="positionStyle" />
+```
+
+测试没问题
+
+cargos.ts:
+
+```ts
+let _cargos: Cargo[] = []
+
+export const setupCargos = (cargos: Cargo[]): void => {
+  _cargos = cargos
+}
+
+export const initCargos = (cargos: Cargo[]): void => {
+  _cargos = []
+  cargos.forEach(cargo => {
+    _cargos.push(cargo)
+  })
+}
+```
+
+Cargo.vue:
+
+```ts
+const cargos: Cargo[] = reactive([])
+setupCargos(cargos)
+const positionStyles = cargos.map(cargo => usePosition(cargo))
+```
+
+但报错了，页面也没有渲染出箱子：
+
+![](public/030.png)
+
+我们下一小节解决一下

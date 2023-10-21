@@ -1,26 +1,20 @@
 <template>
-  <img class="map-img keeper" :src="keeperSrc" :style="positionStyle" />
+  <img
+    v-if="keeper.x !== undefined"
+    class="map-img keeper"
+    :src="keeperSrc"
+    :style="positionStyle" />
 </template>
 
 <script setup lang="ts">
-import { ComputedRef, onMounted, onUnmounted, reactive, watchEffect } from 'vue'
+import { onMounted, onUnmounted, reactive } from 'vue'
 import keeperSrc from '../assets/keeper.png'
-import { type Keeper, initKeeper, moveLeft, moveRight, moveUp, moveDown } from '../game/keeper'
+import { type Keeper, moveLeft, moveRight, moveUp, moveDown, setupKeeper } from '../game/keeper'
 import { usePosition } from '../composables/position'
-import { gameDatas } from '../game/gameData'
-import { getGame } from '../game/game'
 
-let keeper: Keeper = reactive({} as Keeper)
-let positionStyle: ComputedRef<string>
-
-watchEffect(() => {
-  const keeperData = gameDatas[getGame().level].keeper
-  keeper.x = keeperData.x
-  keeper.y = keeperData.y
-  initKeeper(keeper)
-
-  positionStyle = usePosition(keeper)
-})
+const keeper: Keeper = reactive({} as Keeper)
+setupKeeper(keeper)
+const positionStyle = usePosition(keeper)
 
 function handleKeyup(e: KeyboardEvent) {
   switch (e.code) {

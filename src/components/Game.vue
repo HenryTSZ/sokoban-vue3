@@ -1,5 +1,6 @@
 <template>
   <div class="container">
+    <button v-if="!game.loaded" @click="() => startGame()">开始游戏</button>
     <Map />
     <Keeper />
     <Cargo />
@@ -14,18 +15,14 @@ import Map from './Map.vue'
 import Keeper from './Keeper.vue'
 import Cargo from './Cargo.vue'
 import { reactive } from 'vue'
-import { initGame } from '../game/game'
+import { initGame, handleNextLevel, startGame } from '../game/game'
 
 const game = reactive({
+  loaded: false,
   isWin: false,
   level: 0
 })
 initGame(game)
-
-const handleNextLevel = () => {
-  game.level++
-  game.isWin = false
-}
 </script>
 
 <style scoped>

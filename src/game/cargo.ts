@@ -9,8 +9,15 @@ let _cargos: Cargo[] = []
 
 export const getCargos = (): Cargo[] => _cargos
 
-export const initCargos = (cargos: Cargo[]): void => {
+export const setupCargos = (cargos: Cargo[]): void => {
   _cargos = cargos
+}
+
+export const initCargos = (cargos: Cargo[]): void => {
+  _cargos.length = 0
+  cargos.forEach(cargo => {
+    _cargos.push(cargo)
+  })
 }
 
 export const getCargoByPosition = (position: Position): Cargo | undefined => {
