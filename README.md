@@ -38,265 +38,68 @@
 
 ## [进入下一关](https://github.com/HenryTSZ/sokoban-vue3/tree/07c7d67d567e639c7ce7471e20274de27e894482)
 
-## 重构所有数据处理
+## [重构所有数据处理](https://github.com/HenryTSZ/sokoban-vue3/tree/eb75dd380425938a859f182a79145e979e958412)
 
-目前我们是在各个 UI 组件内监听 `level` 的变化，再重新获取对应的数据，然后重新渲染。
+## 解决 Cargo 报错
 
-那其实我们可以在 `level` 改变的方法里统一处理所有数据的变化。
+现在的现象是箱子没有出来，还报错了
 
-### 抽离改变 `level` 的方法
+在网上查询报错信息，意思就是说：多了个 value，在渲染 div 的时候，一些部分不应该有 value
 
-目前改变 `level` 的方法在 `Game.vue` 中，所以我们需要将其提取到 `game.ts` 中。
+详见：[Vue3 数据对接报错（Unhandled error during execution of render function ）](https://www.cnblogs.com/zsbb/p/17070297.html)
 
-```ts
-export const handleNextLevel = () => {
-  const level = _game.level + 1
-  _game.level = level
-  _game.isWin = false
-}
-```
-
-然后将 `handleNextLevel` 引入到 `Game.vue` 中即可
-
-```ts
-import { initGame, handleNextLevel } from '../game/game'
-```
-
-### 统一处理所有数据的变化
-
-#### 抽离响应式数据思维
-
-那在 `handleNextLevel` 方法里，我们需要统一处理所有数据的变化。
-
-先处理 `map` 的逻辑，将 `watchEffect` 中的逻辑抽离到 `map.ts`
-
-但这里出现问题了，`watchEffect` 里的 `map` 在 `Map.vue` 中是响应式对象，而我们这里没有响应式了。
-
-除非我们在 `map.ts` 中声明 `_map` 的时候就使用 `reactive` 来声明，但这样就将 `UI` 与数据耦合了。
-
-那我们可以这样，还是在 `Map.vue` 中使用 `reactive` 来声明，然后调用一个方法，将这个 `reactive` 的对象传入到 `map.ts` 中，这样响应式还在，`UI` 与数据也不耦合了
-
-UI 逻辑里面也有响应式的索引，数据层也可以通过 `getMap` 方法拿到，也方便其他组件调用，测试逻辑也不需要改动
-
-#### 处理 `map` 的逻辑
-
-在 `map.ts` 中创建
-
-```ts
-export type Map = Element[][]
-
-let _map: Map
-export function setupMap(map: Map) {
-  _map = map
-}
-```
-
-而且我们以前在 `initMap` 里保留了原始的 `Map` 数据和处理后的 `Map` 数据，但我们后续并没有使用原始数据，所以我们就不保留了，直接处理数据
-
-```ts
-export const initMap = (rowMap: number[][]) => {
-  _map.length = 0
-  for (let i = 0; i < rowMap.length; i++) {
-    const row = []
-    for (let j = 0; j < rowMap[i].length; j++) {
-      switch (rowMap[i][j]) {
-        case 0:
-          row.push(new Empty())
-          break
-        case 1:
-          row.push(new Wall())
-          break
-        case 2:
-          row.push(new Floor())
-          break
-        case 3:
-          row.push(new Target())
-          break
-      }
-    }
-    _map.push(row)
-  }
-  return _map
-}
-```
-
-查看单测发现报错了：
-
-> TypeError: Cannot set properties of undefined (setting 'length')
-
-这个是因为我们没有给 `_map` 初始值，所以它是 `undefined`，那就加一个吧
-
-```ts
-let _map: Map = []
-```
-
-当然，`getMap` 方法也需要改变
-
-```ts
-export const getMap = () => _map
-```
-
-然后我们在 `Map.vue` 中使用
-
-```ts
-const map: Element[][] = reactive([])
-setupMap(map)
-```
-
-再在 `game.ts` 中调用 `initMap` 方法
-
-```ts
-export const handleNextLevel = () => {
-  const level = _game.level + 1
-  _game.level = level
-  _game.isWin = false
-  initData()
-}
-
-const initData = () => {
-  const { map } = gameDatas[_game.level]
-  initMap(map)
-}
-```
-
-但这只解决了进入下一关的初始化数据，游戏最开始还没有初始化呢
-
-#### 开始游戏逻辑
-
-所以我们还需要一个 `startGame` 的方法，内部就是调用 `initData` 方法
-
-```ts
-export const startGame = () => {
-  initData()
-}
-```
-
-然后我们在 `Game.vue` 中调用
-
-```ts
-startGame()
-```
-
-但地图没有渲染出来
-
-![](public/028.png)
-
-这是因为 `Game.vue` 是父组件，先渲染，先执行 `startGame` 方法，`initData` 方法里调用 `initMap`，但此时还没有 `setupMap`，`_map` 还是初始值：`[]`，所以 `_map` 还不是响应式对象。接下来才是 `Map.vue` 方法执行 `setupMap` 方法，但这里只是将 `_map` 初始化了，没有调用 `initMap` 方法，所以地图没有渲染出来。
-
-那就好办了，我们让 `startGame` 在 `setupMap` 之后执行就可以了，先加一个 `setTimeout` 试试
-
-```ts
-setTimeout(() => {
-  startGame()
-})
-```
-
-地图渲染出来了
-
-那其实我们可以在页面加一个开始游戏的按钮，点击调用 `startGame` 方法，这样就可以保证肯定是在 `setupMap` 之后调用了
-
-所以我们 `Game` 类型还需要一个参数，标识是否是开始游戏：`loaded: boolean`
-
-```ts
-export interface Game {
-  loaded: boolean
-  isWin: boolean
-  level: number
-}
-```
-
-`startGame` 方法中需要将其改成 `true`
-
-```ts
-export const startGame = () => {
-  _game.loaded = true
-  initData()
-}
-```
-
-然后在 `Game.vue` 中调用
-
-```html
-<button v-if="!game.loaded" @click="startGame">开始游戏</button>
-```
-
-![](public/029.gif)
-
-但 `Keeper` 与 `Cargo` 初始展示有点问题，我们也需要和 `Map` 一样，处理一下数据
-
-#### 处理 `Keeper` 与 `Cargo` 的数据
-
-有了处理 `Map` 数据的经验，我们就可以很轻松的处理 `Keeper` 与 `Cargo` 的数据了
-
-game.ts
-
-```ts
-const initData = () => {
-  const { map, keeper, cargos } = gameDatas[_game.level]
-  initMap(map)
-  initKeeper(keeper)
-  initCargos(cargos)
-}
-```
-
-keeper.ts:
-
-```ts
-let _keeper: Keeper = {} as Keeper
-
-export const setupKeeper = (keeper: Keeper) => {
-  _keeper = keeper
-}
-
-export const initKeeper = (keeper: Keeper) => {
-  _keeper.x = keeper.x
-  _keeper.y = keeper.y
-}
-```
-
-Keeper.vue:
-
-```ts
-const keeper: Keeper = reactive({} as Keeper)
-setupKeeper(keeper)
-const positionStyle = usePosition(keeper)
-```
-
-但在开始游戏之前 `Keeper` 就出现了，所以需要判断一下：
+试了一下，去掉 `.value` 确实不报错了，但箱子还是没有出来
 
 ```vue
-<img v-if="keeper.x !== undefined" class="map-img keeper" :src="keeperSrc" :style="positionStyle" />
+:style="positionStyles[index]"
 ```
 
-测试没问题
+而且这种写法是不对的，因为 `positionStyles[index]` 是一个响应式数据，必须使用 `.value` 来获取，而不是直接获取
 
-cargos.ts:
+关于这个报错和原因本人就无从得知了，但想到了解决办法，无非就是等 `game.loaded` 为 true 之后再去渲染
 
-```ts
-let _cargos: Cargo[] = []
+首先在 `Game.vue` 中当 `loaded` 以后渲染 `Cargo.vue`
 
-export const setupCargos = (cargos: Cargo[]): void => {
-  _cargos = cargos
-}
-
-export const initCargos = (cargos: Cargo[]): void => {
-  _cargos = []
-  cargos.forEach(cargo => {
-    _cargos.push(cargo)
-  })
-}
+```vue
+<Cargo v-if="game.loaded" />
 ```
 
-Cargo.vue:
+那 `setupCargo` 初始化就无法执行了，所以只能在 `Game.vue` 中执行了
 
 ```ts
-const cargos: Cargo[] = reactive([])
+const cargos = reactive([])
 setupCargos(cargos)
+```
+
+然后在 `Cargo.vue` 中通过 `getCargos` 获取数据，这样就可以渲染了
+
+```ts
+const cargos = getCargos()
 const positionStyles = cargos.map(cargo => usePosition(cargo))
 ```
 
-但报错了，页面也没有渲染出箱子：
+这样不报错了，箱子也能渲染出来了，操作也没有问题
 
-![](public/030.png)
+但进入第二关就不行了，首先箱子的位置还是第一关最后的位置，不是第二关初始化的位置，而且玩家也无法推箱子了（视图不渲染）
 
-我们下一小节解决一下
+难道使用 `getCargos()` 获取到的 `cargos` 不是响应式的吗？
+
+通过在页面输出 `{{ cargos }}` 发现是响应式的，那就是 `positionStyles` 不是响应式的了
+
+现在看这段代码：
+
+```ts
+const positionStyles = cargos.map(cargo => usePosition(cargo))
+```
+
+确实有问题，因为 `map` 是返回一个新值
+
+所以我们不能在这里获取 `positionStyle` 了，而应该这样获取：
+
+```vue
+:style="usePosition(cargo).value"
+```
+
+那我们一开始说要在 `loaded` 为 true 之后才渲染 `Cargo.vue`，这样改完以后是不是也不用了呢？
+
+再把代码还原回去，也没有任何问题了

@@ -2,8 +2,8 @@
   <img
     class="map-img cargo"
     :src="cargo.onTargetPoint ? cargoOnTarget : cargoImg"
-    v-for="(cargo, index) in cargos"
-    :style="positionStyles[index].value" />
+    v-for="cargo in cargos"
+    :style="usePosition(cargo).value" />
 </template>
 
 <script setup lang="ts">
@@ -15,7 +15,6 @@ import { usePosition } from '../composables/position'
 
 const cargos: Cargo[] = reactive([])
 setupCargos(cargos)
-const positionStyles = cargos.map(cargo => usePosition(cargo))
 </script>
 
 <style scoped>
