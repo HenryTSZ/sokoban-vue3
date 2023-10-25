@@ -40,66 +40,22 @@
 
 ## [重构所有数据处理](https://github.com/HenryTSZ/sokoban-vue3/tree/eb75dd380425938a859f182a79145e979e958412)
 
-## 解决 Cargo 报错
+## [解决 Cargo 报错](https://github.com/HenryTSZ/sokoban-vue3/tree/f811eb965bc6fe8852eebaf3d96440362f9e914f)
 
-现在的现象是箱子没有出来，还报错了
+## 统一导出口
 
-在网上查询报错信息，意思就是说：多了个 value，在渲染 div 的时候，一些部分不应该有 value
+我们统一一下导出口，这样在 `UI` 逻辑里面引入 `game model` 时更干净
 
-详见：[Vue3 数据对接报错（Unhandled error during execution of render function ）](https://www.cnblogs.com/zsbb/p/17070297.html)
-
-试了一下，去掉 `.value` 确实不报错了，但箱子还是没有出来
-
-```vue
-:style="positionStyles[index]"
-```
-
-而且这种写法是不对的，因为 `positionStyles[index]` 是一个响应式数据，必须使用 `.value` 来获取，而不是直接获取
-
-关于这个报错和原因本人就无从得知了，但想到了解决办法，无非就是等 `game.loaded` 为 true 之后再去渲染
-
-首先在 `Game.vue` 中当 `loaded` 以后渲染 `Cargo.vue`
-
-```vue
-<Cargo v-if="game.loaded" />
-```
-
-那 `setupCargo` 初始化就无法执行了，所以只能在 `Game.vue` 中执行了
+首先创建 `src/game/index.ts` 文件，将 `game` 下的所有接口在这里统一导出
 
 ```ts
-const cargos = reactive([])
-setupCargos(cargos)
+export * from './cargo'
+export * from './game'
+export * from './keeper'
+export * from './map'
+export * from './position'
 ```
 
-然后在 `Cargo.vue` 中通过 `getCargos` 获取数据，这样就可以渲染了
+然后把相关引用都换成 `./game`
 
-```ts
-const cargos = getCargos()
-const positionStyles = cargos.map(cargo => usePosition(cargo))
-```
-
-这样不报错了，箱子也能渲染出来了，操作也没有问题
-
-但进入第二关就不行了，首先箱子的位置还是第一关最后的位置，不是第二关初始化的位置，而且玩家也无法推箱子了（视图不渲染）
-
-难道使用 `getCargos()` 获取到的 `cargos` 不是响应式的吗？
-
-通过在页面输出 `{{ cargos }}` 发现是响应式的，那就是 `positionStyles` 不是响应式的了
-
-现在看这段代码：
-
-```ts
-const positionStyles = cargos.map(cargo => usePosition(cargo))
-```
-
-确实有问题，因为 `map` 是返回一个新值
-
-所以我们不能在这里获取 `positionStyle` 了，而应该这样获取：
-
-```vue
-:style="usePosition(cargo).value"
-```
-
-那我们一开始说要在 `loaded` 为 true 之后才渲染 `Cargo.vue`，这样改完以后是不是也不用了呢？
-
-再把代码还原回去，也没有任何问题了
+如 `import { initGame, handleNextLevel, startGame } from '../game/game'` 改成 `import { initGame, handleNextLevel, startGame } from './game'`

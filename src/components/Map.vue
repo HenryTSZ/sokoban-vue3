@@ -13,7 +13,7 @@ import Empty from './Empty.vue'
 import Wall from './Wall.vue'
 import Floor from './Floor.vue'
 import Target from './Target.vue'
-import { Element, setupMap } from '../game/map'
+import { Element, setupMap } from '../game'
 import { type Component, reactive } from 'vue'
 
 const map: Element[][] = reactive([])

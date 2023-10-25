@@ -16,7 +16,8 @@ describe('fighting', () => {
     ])
     initGame({
       isWin: false,
-      level: 1
+      level: 1,
+      loaded: true
     })
   })
 

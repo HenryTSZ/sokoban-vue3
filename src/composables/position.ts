@@ -1,4 +1,4 @@
-import { Position } from '../game/position'
+import { Position } from '../game'
 import { computed } from 'vue'
 
 const STEP = 32

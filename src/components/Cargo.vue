@@ -10,7 +10,7 @@
 import { reactive } from 'vue'
 import cargoImg from '../assets/cargo.png'
 import cargoOnTarget from '../assets/cargo_on_target.png'
-import { Cargo, setupCargos } from '../game/cargo'
+import { Cargo, setupCargos } from '../game'
 import { usePosition } from '../composables/position'
 
 const cargos: Cargo[] = reactive([])

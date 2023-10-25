@@ -15,7 +15,7 @@ import Map from './Map.vue'
 import Keeper from './Keeper.vue'
 import Cargo from './Cargo.vue'
 import { reactive } from 'vue'
-import { initGame, handleNextLevel, startGame } from '../game/game'
+import { initGame, handleNextLevel, startGame } from '../game'
 
 const game = reactive({
   loaded: false,

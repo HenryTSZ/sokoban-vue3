@@ -9,7 +9,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, reactive } from 'vue'
 import keeperSrc from '../assets/keeper.png'
-import { type Keeper, moveLeft, moveRight, moveUp, moveDown, setupKeeper } from '../game/keeper'
+import { type Keeper, moveLeft, moveRight, moveUp, moveDown, setupKeeper } from '../game'
 import { usePosition } from '../composables/position'
 
 const keeper: Keeper = reactive({} as Keeper)
