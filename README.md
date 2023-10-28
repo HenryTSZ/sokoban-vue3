@@ -42,20 +42,36 @@
 
 ## [解决 Cargo 报错](https://github.com/HenryTSZ/sokoban-vue3/tree/f811eb965bc6fe8852eebaf3d96440362f9e914f)
 
-## 统一导出口
+## [统一导出口](https://github.com/HenryTSZ/sokoban-vue3/tree/ee72436e762bf2c41f1f5a36d54561d2d5fdc453)
 
-我们统一一下导出口，这样在 `UI` 逻辑里面引入 `game model` 时更干净
+## 重构命名
 
-首先创建 `src/game/index.ts` 文件，将 `game` 下的所有接口在这里统一导出
+目前 `keeperCollisionDetection.ts` 命名是不准确的，里面的方法不是检测 `keeper` 的，或者只能说是服务于 `keeper` 的，所以去掉 `keeper` 更好
 
-```ts
-export * from './cargo'
-export * from './game'
-export * from './keeper'
-export * from './map'
-export * from './position'
-```
+这里重命名使用 `VSCode` 自带的 `rename` 命令来重命名，快捷键是 `F2`，重命名以后，相关的引用也会同步修改
 
-然后把相关引用都换成 `./game`
+同时里面的函数名也有点问题，应该是动词在前，比如 `wallCollision` 应改为 `collisionWall`，同理，还是使用 `F2` 来重命名
 
-如 `import { initGame, handleNextLevel, startGame } from '../game/game'` 改成 `import { initGame, handleNextLevel, startGame } from './game'`
+修改完成以后，一定要看一下测试是否通过
+
+目前修改完是通过的
+
+`fighting.ts` 命名也需要修改一下，我们是移动类的游戏，而不是战斗类的，所以改成 `move` 更好
+
+同时里面的 `fighting` 函数也需要修改一下
+
+而且函数里面的 `map` 对象可以提出来，没必要每次调用函数的时候都创建一个
+
+对应的单测命名也需要修改一下，里面的测试全部都是关于 `game` 的，是我们的核心逻辑，所以改成 `game` 更好
+
+我们里面写的都是比较大的测试
+
+那除了这种方式，还可以写小的测试，比如 `map` 里的 `setupMap` 方法，`initMap` 方法等，都写对应的单测
+
+那对于我们这个程序而言，就没有必要了，通过 `game.space.ts` 都可以测试到了
+
+这么去测试的话，就把整体的游戏逻辑连起来测试了，当某一个算法更复杂一些的时候，在 `game.space.ts` 里面很难覆盖到的时候，才会转到更小的上下文里面去测试
+
+而且我们是基于 `TDD` 来写的，如果拆分的太小了，我们在重构的时候有可能就把这个功能删除了，那测试就白写了
+
+重新跑一下测试，也没有问题

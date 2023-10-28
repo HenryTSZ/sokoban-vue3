@@ -1,5 +1,5 @@
 import { Position } from './position'
-import { Direction, fighting } from './fighting'
+import { Direction, move } from './move'
 
 export interface Keeper extends Position {}
 
@@ -17,17 +17,17 @@ export const initKeeper = (keeper: Keeper) => {
 }
 
 export const moveLeft = () => {
-  fighting(Direction.Left)
+  move(Direction.Left)
 }
 
 export const moveRight = () => {
-  fighting(Direction.Right)
+  move(Direction.Right)
 }
 
 export const moveUp = () => {
-  fighting(Direction.Up)
+  move(Direction.Up)
 }
 
 export const moveDown = () => {
-  fighting(Direction.Down)
+  move(Direction.Down)
 }

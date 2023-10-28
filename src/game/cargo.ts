@@ -1,4 +1,4 @@
-import { targetCollision } from './keeperCollisionDetection'
+import { collisionTarget } from './collisionDetection'
 import { Position } from './position'
 
 export interface Cargo extends Position {
@@ -29,5 +29,5 @@ export const isAllCargoOnTarget = (): boolean => {
 }
 
 export const handleHitTargetPoint = (cargo: Cargo): void => {
-  cargo.onTargetPoint = targetCollision(cargo)
+  cargo.onTargetPoint = collisionTarget(cargo)
 }
