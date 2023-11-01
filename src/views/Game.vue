@@ -11,9 +11,9 @@
 </template>
 
 <script setup lang="ts">
-import Map from './Map.vue'
-import Keeper from './Keeper.vue'
-import Cargo from './Cargo.vue'
+import Map from '../components/Map.vue'
+import Keeper from '../components/Keeper.vue'
+import Cargo from '../components/Cargo.vue'
 import { reactive } from 'vue'
 import { initGame, handleNextLevel, startGame } from '../game'
 

@@ -46,18 +46,70 @@
 
 ## [重构命名](https://github.com/HenryTSZ/sokoban-vue3/tree/b8af3b48618eb628e27f3ed4bcc534217920af83)
 
-## 地图编辑器
+## [地图编辑器](https://github.com/HenryTSZ/sokoban-vue3/tree/a88260e0b7d60759a4e9147f3fd68d267dbfc3f5)
 
-目的是让游戏变的更完整一些
+## 通过 router 来切换 game 和 mapEdit 页面
 
-然后地图编辑器的实现也和传统的前端逻辑比较符合
+首先需要安装 vue-router
 
-![](public/032.png)
+```bash
+pnpm install vue-router
+```
 
-![](public/036.png)
+然后创建 src/router/index.ts 并添加如下代码
 
-![](public/033.png)
+```ts
+import { createRouter, createWebHashHistory } from 'vue-router'
+import Game from '../views/Game.vue'
+import MapEdit from '../views/MapEdit.vue'
 
-![](public/034.png)
+const routes = [
+  {
+    path: '/',
+    name: 'Game',
+    component: Game
+  },
+  {
+    path: '/mapEdit',
+    name: 'MapEdit',
+    component: MapEdit
+  }
+]
 
-![](public/035.png)
+export const router = createRouter({
+  history: createWebHashHistory(),
+  routes
+})
+```
+
+我们需要将 `Game.vue` 移动到 views 文件夹下，修改一下引用，并创建 `MapEdit.vue`
+
+```vue
+<template>
+  <div>mapEdit</div>
+</template>
+
+<script setup lang="ts"></script>
+
+<style scoped></style>
+```
+
+然后在 main.ts 中添加如下代码
+
+```ts
+import { createApp } from 'vue'
+import App from './App.vue'
+import router from './router'
+
+createApp(App).use(router).mount('#app')
+```
+
+最后在 App.vue 中修改一下
+
+```vue
+<template>
+  <div>
+    <router-view />
+  </div>
+</template>
+```
