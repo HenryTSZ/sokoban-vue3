@@ -48,68 +48,108 @@
 
 ## [地图编辑器](https://github.com/HenryTSZ/sokoban-vue3/tree/a88260e0b7d60759a4e9147f3fd68d267dbfc3f5)
 
-## 通过 router 来切换 game 和 mapEdit 页面
+## [通过 router 来切换 game 和 mapEdit 页面](https://github.com/HenryTSZ/sokoban-vue3/tree/0227ec7c4c810dc8e95eb5604479c6a4bb574a91)
 
-首先需要安装 vue-router
+## 设置地图大小
 
-```bash
-pnpm install vue-router
-```
+有两个 input，一个用来设置地图的宽度，一个用来设置地图的高度。
 
-然后创建 src/router/index.ts 并添加如下代码
+当设置完宽度和高度后，可以看到对应的地图编辑块
 
-```ts
-import { createRouter, createWebHashHistory } from 'vue-router'
-import Game from '../views/Game.vue'
-import MapEdit from '../views/MapEdit.vue'
-
-const routes = [
-  {
-    path: '/',
-    name: 'Game',
-    component: Game
-  },
-  {
-    path: '/mapEdit',
-    name: 'MapEdit',
-    component: MapEdit
-  }
-]
-
-export const router = createRouter({
-  history: createWebHashHistory(),
-  routes
-})
-```
-
-我们需要将 `Game.vue` 移动到 views 文件夹下，修改一下引用，并创建 `MapEdit.vue`
-
-```vue
-<template>
-  <div>mapEdit</div>
-</template>
-
-<script setup lang="ts"></script>
-
-<style scoped></style>
-```
-
-然后在 main.ts 中添加如下代码
-
-```ts
-import { createApp } from 'vue'
-import App from './App.vue'
-import router from './router'
-
-createApp(App).use(router).mount('#app')
-```
-
-最后在 App.vue 中修改一下
+首先在 MapEdit.vue 加两个 input:
 
 ```vue
 <template>
   <div>
-    <router-view />
+    <div class="input-row">
+      <span class="input-row-label">row:</span>
+      <input type="number" />
+    </div>
+    <div class="input-col">
+      <span class="input-col-label">col:</span>
+      <input type="number" />
+    </div>
   </div>
 </template>
+
+<script setup lang="ts"></script>
+
+<style scoped>
+.input-row,
+.input-col {
+  display: flex;
+  margin-bottom: 8px;
+}
+.input-row-label,
+.input-col-label {
+  width: 35px;
+  text-align: right;
+  margin-right: 5px;
+}
+</style>
 ```
+
+样式如下：
+
+![](public/037.png)
+
+然后再添加地图编辑块
+
+```vue
+<div class="block-row" v-for="row in 5">
+  <div class="block-col" v-for="col in 5">
+    <div class="block">1</div>
+  </div>
+</div>
+```
+
+```css
+.block-row {
+  display: flex;
+}
+.block {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #ccc;
+  margin: 2px;
+}
+```
+
+样式如下：
+
+![](public/038.png)
+
+这里我们是先画出静态页面，等调试好以后再换成动态数据
+
+最后在 MapEdit.vue 里给 input 和编辑块绑定数据
+
+```vue
+<template>
+  <div>
+    <div class="input-row">
+      <span class="input-row-label">row:</span>
+      <input type="number" v-model="row" />
+    </div>
+    <div class="input-col">
+      <span class="input-col-label">col:</span>
+      <input type="number" v-model="col" />
+    </div>
+    <div class="block-row" v-for="i in row">
+      <div class="block-col" v-for="j in col">
+        <div class="block">1</div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const row = ref(5)
+const col = ref(5)
+</script>
+```
+
+这样，当更新地图的宽和高时，地图编辑块也会随之更新。
+
+![](public/039.gif)
